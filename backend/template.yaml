@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: Pledge durable voice-submission intake
+Description: Pledge durable voice-submission intake and asynchronous evaluation
 
 Globals:
   Function:
@@ -48,6 +48,52 @@ Resources:
             ApiId: !Ref Api
             Path: /submissions
             Method: POST
+
+  ProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: processing.start_handler
+      Timeout: 30
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref SubmissionsBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - transcribe:StartTranscriptionJob
+              Resource: "*"
+      Events:
+        ProcessingQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ProcessingQueue.Arn
+            BatchSize: 5
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
+  CompletionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: processing.completion_handler
+      Timeout: 30
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref SubmissionsBucket
+      Events:
+        TranscriptionStateChange:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - aws.transcribe
+              detail-type:
+                - Transcribe Job State Change
+              detail:
+                TranscriptionJobStatus:
+                  - COMPLETED
+                  - FAILED
 
   SubmissionsBucket:
     Type: AWS::S3::Bucket
