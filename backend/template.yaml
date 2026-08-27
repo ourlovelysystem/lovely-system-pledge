@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Pledge durable voice-submission intake
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures: [arm64]
+    Timeout: 15
+    MemorySize: 256
+    Environment:
+      Variables:
+        SUBMISSIONS_BUCKET: !Ref SubmissionsBucket
+        PROCESSING_QUEUE_URL: !Ref ProcessingQueue
+        MAX_AUDIO_BYTES: "4194304"
+        MIN_DURATION_MS: "750"
+        MAX_DURATION_MS: "30000"
+
+Resources:
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: ["*"]
+        AllowHeaders: ["content-type"]
+        AllowMethods: [GET, POST, OPTIONS]
+
+  IntakeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref SubmissionsBucket
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt ProcessingQueue.QueueName
+      Events:
+        Health:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /health
+            Method: GET
+        Submit:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /submissions
+            Method: POST
+
+  SubmissionsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  ProcessingDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
+  ProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ProcessingDeadLetterQueue.Arn
+        maxReceiveCount: 4
+
+Outputs:
+  ApiUrl:
+    Description: Place this URL in ../config.js.
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.${AWS::URLSuffix}"
+  SubmissionsBucketName:
+    Value: !Ref SubmissionsBucket
+  ProcessingQueueUrl:
+    Value: !Ref ProcessingQueue
