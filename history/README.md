@@ -116,3 +116,4 @@ This is a repository convention, not an optional writing preference. An agent gi
 | 001 | 2026-08-27 | Accepted direction | [Bootstrap voice solicitation specification](./2026-08-27-001-bootstrap-voice-specification.md) |
 | 002 | 2026-08-27 | Corrected | [Root README welcomes before it instructs](./2026-08-27-002-readme-tone-correction.md) |
 | 003 | 2026-08-27 | Proposed | [Voice receipts, claimability, and revocation](./2026-08-27-003-voice-receipts-and-claims.md) |
+| 004 | 2026-08-27 | Implemented | [Bootstrap browser slice](./2026-08-27-004-bootstrap-browser-slice.md) |
