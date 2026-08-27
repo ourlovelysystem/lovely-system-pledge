@@ -114,3 +114,4 @@ This is a repository convention, not an optional writing preference. An agent gi
 | No. | Date | Status | Entry |
 |---:|---|---|---|
 | 001 | 2026-08-27 | Accepted direction | [Bootstrap voice solicitation specification](./2026-08-27-001-bootstrap-voice-specification.md) |
+| 002 | 2026-08-27 | Corrected | [Root README welcomes before it instructs](./2026-08-27-002-readme-tone-correction.md) |
