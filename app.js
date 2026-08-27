@@ -23,6 +23,7 @@
   let blob = null;
   let objectUrl = null;
   let startedAt = 0;
+  let recordingDurationMs = 0;
   let timerHandle = null;
   let audioContext = null;
   let analyser = null;
@@ -86,6 +87,7 @@
     objectUrl = null;
     blob = null;
     chunks = [];
+    recordingDurationMs = 0;
     preview.removeAttribute("src");
     preview.hidden = true;
     discardButton.disabled = true;
@@ -132,6 +134,7 @@
 
   async function finishRecording() {
     const duration = Date.now() - startedAt;
+    recordingDurationMs = duration;
     await releaseMicrophone();
     recordButton.disabled = false;
     stopButton.disabled = true;
@@ -161,6 +164,51 @@
     if (recorder?.state === "recording") recorder.stop();
   }
 
+  function blobToBase64(value) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => resolve(String(reader.result).split(",", 2)[1]));
+      reader.addEventListener("error", () => reject(reader.error));
+      reader.readAsDataURL(value);
+    });
+  }
+
+  async function submitRecording() {
+    if (!blob) return;
+    const apiUrl = String(window.PLEDGE_CONFIG?.API_URL || "").replace(/\/$/, "");
+    if (!apiUrl) {
+      status.textContent = "Pledge intake is not configured. Add the deployed ApiUrl to config.js.";
+      return;
+    }
+
+    submitButton.disabled = true;
+    discardButton.disabled = true;
+    status.textContent = "Making the recording durable…";
+
+    try {
+      const audioBase64 = await blobToBase64(blob);
+      const borrowingTerm = document.querySelector('input[name="term"]:checked')?.value;
+      const result = await fetch(`${apiUrl}/submissions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          audio_base64: audioBase64,
+          media_type: blob.type,
+          duration_ms: Math.round(recordingDurationMs),
+          borrowing_term: borrowingTerm
+        })
+      });
+      const body = await result.json().catch(() => ({}));
+      if (!result.ok) throw new Error(body.error || `Submission failed (${result.status}).`);
+      comeBack.dataset.submissionId = body.submission_id;
+      show(comeBack);
+    } catch (error) {
+      status.textContent = error?.message || "Pledge could not accept the recording.";
+      submitButton.disabled = false;
+      discardButton.disabled = false;
+    }
+  }
+
   $("agreeButton").addEventListener("click", () => show(solicitation));
   $("declineButton").addEventListener("click", () => {
     $("landingStatus").textContent = "Pledge remains mute.";
@@ -178,10 +226,7 @@
   recordButton.addEventListener("click", startRecording);
   stopButton.addEventListener("click", stopRecording);
   discardButton.addEventListener("click", discard);
-  submitButton.addEventListener("click", () => {
-    if (!blob) return;
-    show(comeBack);
-  });
+  submitButton.addEventListener("click", submitRecording);
 
   window.addEventListener("beforeunload", () => {
     stream?.getTracks().forEach((track) => track.stop());
