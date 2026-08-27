@@ -59,16 +59,16 @@
         <button id="cancelButton" class="quiet" type="button">Cancel</button>
       </div>
       <p id="submissionStatus" class="status" aria-live="polite"></p>
-      <p class="prototype-note">This first slice validates the recording in the browser. Durable submission is not connected yet.</p>
+      <p class="prototype-note">Pledge accepts the envelope now. Transcription and content validation happen later.</p>
     </section>
 
     <section id="comeBack" class="panel hero" aria-labelledby="comeBackTitle" hidden>
       <p class="kicker">ENVELOPE ACCEPTED</p>
       <h2 id="comeBackTitle">Come back soon.</h2>
-      <p>Your recording passed the local audio-envelope checks. Content evaluation belongs to the asynchronous processing layer.</p>
+      <p>Your recording is durable and queued. Content evaluation happens asynchronously; you do not need to wait.</p>
       <button id="returnButton" class="primary" type="button">Return to Pledge</button>
     </section>
   </main>
-  <script src="./app.js"></script>
+  <script src="./config.js"></script>\n  <script src="./app.js"></script>
 </body>
 </html>
