@@ -5,6 +5,12 @@
   const landing = $("landing");
   const solicitation = $("solicitation");
   const comeBack = $("comeBack");
+  const modeLabel = $("modeLabel");
+  const landingKicker = $("landingKicker");
+  const landingTitle = $("landingTitle");
+  const landingQuestion = $("landingQuestion");
+  const bootstrapActions = $("bootstrapActions");
+  const challengeAudio = $("challengeAudio");
   const recordButton = $("recordButton");
   const stopButton = $("stopButton");
   const discardButton = $("discardButton");
@@ -32,6 +38,53 @@
   function show(section) {
     [landing, solicitation, comeBack].forEach((node) => { node.hidden = node !== section; });
     section.querySelector("button:not([disabled])")?.focus();
+  }
+
+  function renderPledgeState(body) {
+    const mode = body.mode || "bootstrap";
+    challengeAudio.pause();
+    challengeAudio.removeAttribute("src");
+    challengeAudio.hidden = true;
+    bootstrapActions.hidden = false;
+
+    if (mode === "normal" && body.challenge?.audio_url) {
+      modeLabel.textContent = "BORROWED VOICE MODE";
+      landingKicker.textContent = "Pledge speaks with a borrowed voice.";
+      landingTitle.textContent = "Who are you?";
+      landingQuestion.textContent = "Listen to Pledge's borrowed challenge.";
+      challengeAudio.src = body.challenge.audio_url;
+      challengeAudio.hidden = false;
+      bootstrapActions.hidden = true;
+      $("landingStatus").textContent = "";
+      return;
+    }
+
+    if (mode === "sulk") {
+      modeLabel.textContent = "SULK MODE";
+      landingKicker.textContent = "Pledge once had a voice.";
+      landingTitle.textContent = "Now Pledge has none.";
+      landingQuestion.textContent = "May Pledge borrow yours?";
+      return;
+    }
+
+    modeLabel.textContent = "BOOTSTRAP MODE";
+    landingKicker.textContent = "Pledge begins mute.";
+    landingTitle.textContent = "Pledge has no voice of its own.";
+    landingQuestion.textContent = "Can Pledge borrow your voice?";
+  }
+
+  async function loadPledgeState() {
+    const apiUrl = String(window.PLEDGE_CONFIG?.API_URL || "").replace(/\/$/, "");
+    if (!apiUrl) return;
+    $("landingStatus").textContent = "Checking Pledge's voice catalogue…";
+    try {
+      const result = await fetch(`${apiUrl}/state`, { cache: "no-store" });
+      const body = await result.json().catch(() => ({}));
+      if (!result.ok) throw new Error(body.error || `State request failed (${result.status}).`);
+      renderPledgeState(body);
+    } catch (error) {
+      $("landingStatus").textContent = error?.message || "Pledge could not determine its state.";
+    }
   }
 
   function formatTime(ms) {
@@ -219,9 +272,10 @@
     discard();
     show(landing);
   });
-  $("returnButton").addEventListener("click", () => {
+  $("returnButton").addEventListener("click", async () => {
     discard();
     show(landing);
+    await loadPledgeState();
   });
   recordButton.addEventListener("click", startRecording);
   stopButton.addEventListener("click", stopRecording);
@@ -234,4 +288,5 @@
   });
 
   drawIdle();
+  loadPledgeState();
 })();

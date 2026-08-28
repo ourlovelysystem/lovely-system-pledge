@@ -15,10 +15,11 @@
     </header>
 
     <section id="landing" class="panel hero" aria-labelledby="landingTitle">
-      <p class="kicker">Pledge begins mute.</p>
+      <p id="landingKicker" class="kicker">Pledge begins mute.</p>
       <h1 id="landingTitle">Pledge has no voice of its own.</h1>
-      <p class="question">Can Pledge borrow your voice?</p>
-      <div class="actions">
+      <p id="landingQuestion" class="question">Can Pledge borrow your voice?</p>
+      <audio id="challengeAudio" controls hidden></audio>
+      <div id="bootstrapActions" class="actions">
         <button id="agreeButton" class="primary" type="button">Yes. Ask me.</button>
         <button id="declineButton" class="quiet" type="button">Not now.</button>
       </div>

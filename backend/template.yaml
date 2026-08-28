@@ -47,6 +47,12 @@ Resources:
             ApiId: !Ref Api
             Path: /health
             Method: GET
+        State:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /state
+            Method: GET
         Submit:
           Type: HttpApi
           Properties:

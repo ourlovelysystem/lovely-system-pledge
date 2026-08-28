@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import os
+import random
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -191,10 +192,87 @@ def create_submission(event):
     })
 
 
+def load_submission_records():
+    records = []
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=BUCKET, Prefix="submissions/"):
+        for item in page.get("Contents", []):
+            key = item.get("Key", "")
+            if not key.endswith(".json"):
+                continue
+            stored = s3.get_object(Bucket=BUCKET, Key=key)
+            records.append(json.loads(stored["Body"].read()))
+    return records
+
+
+def derive_pledge_state(records, now):
+    relevant = [
+        record for record in records
+        if record.get("catalogue") == "who_are_you"
+    ]
+    ever_had_voice = any(
+        record.get("catalogue_decision") == "usable" for record in relevant
+    )
+    eligible = []
+    for record in relevant:
+        if record.get("catalogue_decision") != "usable":
+            continue
+        if record.get("withdrawn_at") or record.get("purged_at"):
+            continue
+        try:
+            starts_at = datetime.fromisoformat(
+                record["borrowing_starts_at"].replace("Z", "+00:00")
+            )
+            expires_at = datetime.fromisoformat(
+                record["expires_at"].replace("Z", "+00:00")
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+        if starts_at <= now < expires_at and record.get("audio_object_reference"):
+            eligible.append(record)
+
+    if not eligible:
+        return {"mode": "sulk" if ever_had_voice else "bootstrap"}
+
+    priority = [
+        record for record in eligible
+        if int(record.get("completed_uses", 0)) < int(record.get("minimum_uses", 0))
+    ]
+    selected = random.choice(priority or eligible)
+    return {"mode": "normal", "selected": selected}
+
+
+def pledge_state():
+    state = derive_pledge_state(load_submission_records(), datetime.now(timezone.utc))
+    result = {"mode": state["mode"]}
+    if state["mode"] == "normal":
+        selected = state["selected"]
+        result["challenge"] = {
+            "submission_id": selected["submission_id"],
+            "audio_url": s3.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": BUCKET,
+                    "Key": selected["audio_object_reference"],
+                },
+                ExpiresIn=300,
+            ),
+            "audio_media_type": selected["audio_media_type"],
+            "expires_at": selected["expires_at"],
+        }
+    return response(200, result)
+
+
 def lambda_handler(event, _context):
     route = event.get("routeKey", "")
     if route == "GET /health":
         return response(200, {"status": "ok", "server_time": int(time.time())})
+    if route == "GET /state":
+        try:
+            return pledge_state()
+        except Exception:
+            logger.exception("Pledge state derivation failed")
+            return response(500, {"error": "Pledge state is unavailable."})
     if route == "POST /submissions":
         try:
             return create_submission(event)
