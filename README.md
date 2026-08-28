@@ -6,10 +6,14 @@ Pledge begins without a voice. It asks a visitor to lend one, admits the visitor
 
 ## Current state
 
-Pledge has no deployed application and no executable implementation in this
-branch. The first implementation was deliberately removed after review. The
-project will be rebuilt from the preserved specification in smaller,
-independently reviewable increments.
+The current implementation is a single diagnostic page intended for AWS
+Amplify. It requests system state from:
+
+`https://api.pledge.ourlovelysystem.org`
+
+That API does not exist in this first test. The page deliberately surfaces the
+resulting browser-visible error so infrastructure can be added and corrected
+one failure at a time. This increment contains no Lambda or API implementation.
 
 ## Start here
 

@@ -3,40 +3,191 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pledge</title>
+  <title>Pledge — System state</title>
   <style>
-    * {
-      box-sizing: border-box;
+    :root {
+      color-scheme: dark;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: #080a09;
+      color: #f2f5f3;
     }
 
-    html,
+    * { box-sizing: border-box; }
+
     body {
-      min-height: 100%;
       margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
     }
 
-    body {
-      display: grid;
-      min-height: 100vh;
-      place-items: center;
-      padding: 2rem;
-      color: #f5f7f2;
-      background: #08110c;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    main {
+      width: min(900px, 100%);
+      border: 1px solid #58605b;
+      background: #101411;
+      padding: clamp(24px, 5vw, 56px);
     }
 
     h1 {
-      margin: 0;
-      font-size: clamp(3rem, 10vw, 8rem);
-      line-height: 0.95;
-      letter-spacing: -0.055em;
-      text-align: center;
+      margin: 0 0 12px;
+      font-family: system-ui, sans-serif;
+      font-size: clamp(2.5rem, 8vw, 6rem);
+      line-height: .95;
+    }
+
+    .lede { margin: 0 0 40px; color: #b8c0bb; }
+
+    .status {
+      display: inline-block;
+      margin-bottom: 20px;
+      padding: 8px 12px;
+      border: 1px solid currentColor;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .status.pending { color: #f3d45d; }
+    .status.success { color: #73e69a; }
+    .status.error { color: #ff746c; }
+
+    dl {
+      display: grid;
+      grid-template-columns: max-content minmax(0, 1fr);
+      gap: 10px 18px;
+      margin: 0 0 24px;
+    }
+
+    dt { color: #8f9993; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+
+    pre {
+      min-height: 110px;
+      margin: 0 0 24px;
+      padding: 16px;
+      overflow: auto;
+      border: 1px solid #3d4540;
+      background: #050605;
+      color: #ffb3ae;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    button {
+      appearance: none;
+      border: 2px solid #d0ff2e;
+      background: #d0ff2e;
+      color: #0a0c0b;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    button:disabled { cursor: wait; opacity: .55; }
+
+    @media (max-width: 600px) {
+      dl { grid-template-columns: 1fr; gap: 4px; }
+      dd { margin-bottom: 10px; }
     }
   </style>
 </head>
 <body>
   <main>
     <h1>Welcome to Pledge.</h1>
+    <p class="lede">Retrieving system state.</p>
+
+    <section aria-labelledby="state-heading">
+      <h2 id="state-heading">System state request</h2>
+      <div id="status" class="status pending" role="status" aria-live="polite">Pending</div>
+
+      <dl>
+        <dt>Request URL</dt>
+        <dd id="request-url"></dd>
+        <dt>Started</dt>
+        <dd id="started">—</dd>
+        <dt>Finished</dt>
+        <dd id="finished">—</dd>
+        <dt>Elapsed</dt>
+        <dd id="elapsed">—</dd>
+        <dt>HTTP status</dt>
+        <dd id="http-status">Unavailable</dd>
+        <dt>Response type</dt>
+        <dd id="response-type">Unavailable</dd>
+      </dl>
+
+      <h3>Available detail</h3>
+      <pre id="detail">Request has not completed.</pre>
+      <button id="retry" type="button">Retry state request</button>
+    </section>
   </main>
+
+  <script>
+    const STATE_URL = "https://api.pledge.ourlovelysystem.org";
+    const elements = {
+      status: document.querySelector("#status"),
+      requestUrl: document.querySelector("#request-url"),
+      started: document.querySelector("#started"),
+      finished: document.querySelector("#finished"),
+      elapsed: document.querySelector("#elapsed"),
+      httpStatus: document.querySelector("#http-status"),
+      responseType: document.querySelector("#response-type"),
+      detail: document.querySelector("#detail"),
+      retry: document.querySelector("#retry")
+    };
+
+    elements.requestUrl.textContent = STATE_URL;
+
+    function setStatus(label, state) {
+      elements.status.textContent = label;
+      elements.status.className = `status ${state}`;
+    }
+
+    async function retrieveState() {
+      const startedAt = new Date();
+      const startedClock = performance.now();
+
+      elements.retry.disabled = true;
+      setStatus("Requesting", "pending");
+      elements.started.textContent = startedAt.toISOString();
+      elements.finished.textContent = "—";
+      elements.elapsed.textContent = "—";
+      elements.httpStatus.textContent = "Unavailable";
+      elements.responseType.textContent = "Unavailable";
+      elements.detail.textContent = "Waiting for the browser request to complete.";
+
+      try {
+        const response = await fetch(STATE_URL, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          cache: "no-store"
+        });
+        const body = await response.text();
+
+        elements.httpStatus.textContent = `${response.status} ${response.statusText || ""}`.trim();
+        elements.responseType.textContent = response.headers.get("content-type") || "Not supplied";
+        elements.detail.textContent = body || "The response body was empty.";
+        setStatus(response.ok ? "State received" : "HTTP error", response.ok ? "success" : "error");
+      } catch (error) {
+        setStatus("Request failed", "error");
+        elements.detail.textContent = JSON.stringify({
+          name: error?.name || "Unknown error",
+          message: error?.message || String(error),
+          browserOnline: navigator.onLine,
+          pageOrigin: location.origin,
+          note: "No HTTP response was exposed to page JavaScript. Browser developer tools may contain lower-level DNS, TLS, network, or CORS detail."
+        }, null, 2);
+      } finally {
+        const finishedAt = new Date();
+        elements.finished.textContent = finishedAt.toISOString();
+        elements.elapsed.textContent = `${Math.round(performance.now() - startedClock)} ms`;
+        elements.retry.disabled = false;
+      }
+    }
+
+    elements.retry.addEventListener("click", retrieveState);
+    retrieveState();
+  </script>
 </body>
 </html>
