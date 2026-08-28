@@ -7,7 +7,11 @@
 
 > When a user shares something with Pledge, that something should be catalogued in Our Lovely System - Pledge catalog. Should I call it an object catalog? That catalog will describe but will not contain user contributed artifacts. S3 will be the primary store. Users will get a UUIDv4 which keys their contributions. This will serve as a receipt. The receipt will be treated as a shared secret. A delete function will be enabled and will be outward facing. The delete function which we will describe now and defer on implementation will permit the bearer to submit a deletion request. That deletion request will require three approvals to proceed. Save the description. I am not ready to answer questions and give specifics at this time. Evaluate.
 
-## Requirements traceable to the source statement
+## Additional source statement
+
+> The contribution catalog should include creation date and longevity. It should include self identification and system identification attributes. We don't have to define system identification now but we should know it'll be comin round the mountain.
+
+## Requirements traceable to the source statements
 
 | ID | Requirement |
 |---|---|
@@ -17,6 +21,11 @@
 | PLEDGE-CATALOG-004 | Each contribution shall be keyed by a UUIDv4 provided to the user. |
 | PLEDGE-CATALOG-005 | The provided UUIDv4 shall serve as the user's receipt for the contribution. |
 | PLEDGE-CATALOG-006 | The receipt shall be treated as a shared secret. |
+| PLEDGE-CATALOG-007 | A contribution catalog entry shall include creation date. |
+| PLEDGE-CATALOG-008 | A contribution catalog entry shall include longevity. |
+| PLEDGE-CATALOG-009 | A contribution catalog entry shall include a self-identification attribute. |
+| PLEDGE-CATALOG-010 | A contribution catalog entry shall include a system-identification attribute. |
+| PLEDGE-CATALOG-011 | System identification shall remain undefined at this stage while being preserved as an anticipated catalog concern. |
 | PLEDGE-DELETE-001 | Pledge shall provide an outward-facing delete function. |
 | PLEDGE-DELETE-002 | The delete function shall permit the bearer of the receipt to submit a deletion request. |
 | PLEDGE-DELETE-003 | A deletion request shall require three approvals before it proceeds. |
@@ -41,6 +50,19 @@ Keeping descriptive catalog records separate from the artifacts they describe es
 - the UUIDv4 identifies the contribution;
 - the user's copy of that UUIDv4 functions as both receipt and shared secret.
 
+### Identification attributes
+
+The catalog will preserve two distinct identification concerns:
+
+- **self identification:** identification supplied or asserted from the contributor's side;
+- **system identification:** identification supplied or derived from the system's side.
+
+The meaning, source, format, authority, and behavior of system identification are not defined now. Its future arrival is acknowledged in the design: it will be “comin round the mountain.”
+
+### Creation date and longevity
+
+Creation date and longevity are required catalog concerns. This description does not equate longevity with an expiration timestamp, retention period, authorization period, or artifact lifetime. The representation and governing semantics remain open.
+
 ### Deletion model
 
 The proposed deletion path separates possession of the receipt from authority to complete deletion:
@@ -58,7 +80,7 @@ The following matters are not defined by the source statement and are not requir
 
 - the permanent catalog name;
 - DynamoDB table names, keys, indexes, or record schema;
-- catalog fields beyond the UUIDv4 relationship;
+- physical attribute names and representations for creation date, longevity, self identification, and system identification;
 - whether one UUIDv4 identifies a contribution, artifact, or catalog entry when those concepts diverge;
 - how the UUIDv4 is delivered, displayed, stored, recovered, or rotated;
 - how bearer possession is proven;
