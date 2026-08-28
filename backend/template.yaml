@@ -33,6 +33,11 @@ Resources:
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref SubmissionsBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObjectTagging
+              Resource: !Sub "${SubmissionsBucket.Arn}/*"
         - SQSSendMessagePolicy:
             QueueName: !GetAtt ProcessingQueue.QueueName
       Events:

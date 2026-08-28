@@ -2,6 +2,7 @@ import base64
 import binascii
 import hashlib
 import json
+import logging
 import os
 import time
 import uuid
@@ -11,6 +12,8 @@ import boto3
 
 s3 = boto3.client("s3")
 sqs = boto3.client("sqs")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 BUCKET = os.environ["SUBMISSIONS_BUCKET"]
 QUEUE_URL = os.environ["PROCESSING_QUEUE_URL"]
@@ -198,5 +201,6 @@ def lambda_handler(event, _context):
         except ValueError as exc:
             return response(400, {"error": str(exc)})
         except Exception:
+            logger.exception("Submission intake failed")
             return response(500, {"error": "Submission intake failed."})
     return response(404, {"error": "Not found."})
