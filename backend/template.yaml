@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Our Lovely System - Pledge state table
+
+Resources:
+  PledgeStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: lovely-system-pledge-state
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: state_record_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: state_record_id
+          KeyType: HASH
+      Tags:
+        - Key: application
+          Value: lovely-system-pledge
+        - Key: purpose
+          Value: state-records
+
+Outputs:
+  PledgeStateTableName:
+    Description: DynamoDB table for Pledge state records and aggregate metrics.
+    Value: !Ref PledgeStateTable
+
+  PledgeStateTableArn:
+    Description: ARN of the Pledge state table.
+    Value: !GetAtt PledgeStateTable.Arn
