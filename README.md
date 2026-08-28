@@ -4,6 +4,13 @@ Pledge begins without a voice. It asks a visitor to lend one, admits the visitor
 
 > Who are you?
 
+## Current state
+
+Pledge has no deployed application and no executable implementation in this
+branch. The first implementation was deliberately removed after review. The
+project will be rebuilt from the preserved specification in smaller,
+independently reviewable increments.
+
 ## Start here
 
 If you are getting acquainted with Pledge or preparing to work on it, these records provide the shortest route into the project:
