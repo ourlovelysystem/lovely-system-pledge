@@ -3,190 +3,133 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pledge — System state</title>
+  <title>Pledge</title>
   <style>
-    :root {
-      color-scheme: dark;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      background: #080a09;
-      color: #f2f5f3;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-    }
-
-    main {
-      width: min(900px, 100%);
-      border: 1px solid #58605b;
-      background: #101411;
-      padding: clamp(24px, 5vw, 56px);
-    }
-
-    h1 {
-      margin: 0 0 12px;
-      font-family: system-ui, sans-serif;
-      font-size: clamp(2.5rem, 8vw, 6rem);
-      line-height: .95;
-    }
-
-    .lede { margin: 0 0 40px; color: #b8c0bb; }
-
-    .status {
-      display: inline-block;
-      margin-bottom: 20px;
-      padding: 8px 12px;
-      border: 1px solid currentColor;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-    }
-
-    .status.pending { color: #f3d45d; }
-    .status.success { color: #73e69a; }
-    .status.error { color: #ff746c; }
-
-    dl {
-      display: grid;
-      grid-template-columns: max-content minmax(0, 1fr);
-      gap: 10px 18px;
-      margin: 0 0 24px;
-    }
-
-    dt { color: #8f9993; }
-    dd { margin: 0; overflow-wrap: anywhere; }
-
-    pre {
-      min-height: 110px;
-      margin: 0 0 24px;
-      padding: 16px;
-      overflow: auto;
-      border: 1px solid #3d4540;
-      background: #050605;
-      color: #ffb3ae;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-
-    button {
-      appearance: none;
-      border: 2px solid #d0ff2e;
-      background: #d0ff2e;
-      color: #0a0c0b;
-      padding: 12px 18px;
-      font: inherit;
-      font-weight: 900;
-      cursor: pointer;
-    }
-
-    button:disabled { cursor: wait; opacity: .55; }
-
-    @media (max-width: 600px) {
-      dl { grid-template-columns: 1fr; gap: 4px; }
-      dd { margin-bottom: 10px; }
+    :root { color-scheme:dark; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; background:#080a09; color:#f2f5f3 }
+    * { box-sizing:border-box }
+    [hidden] { display:none!important }
+    body { margin:0; min-height:100vh; background:#080a09 }
+    .diagnostic-page { min-height:100vh; display:grid; place-items:center; padding:24px }
+    .diagnostic-panel { width:min(900px,100%); border:1px solid #58605b; background:#101411; padding:clamp(24px,5vw,56px) }
+    .diagnostic-panel h1 { margin:0 0 12px; font-family:system-ui,sans-serif; font-size:clamp(2.5rem,8vw,6rem); line-height:.95 }
+    .lede { margin:0 0 40px; color:#b8c0bb }
+    .status { display:inline-block; margin-bottom:20px; padding:8px 12px; border:1px solid currentColor; font-weight:800; text-transform:uppercase; letter-spacing:.08em }
+    .status.pending { color:#f3d45d } .status.success { color:#73e69a } .status.error { color:#ff746c }
+    dl { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:10px 18px; margin:0 0 24px }
+    dt { color:#8f9993 } dd { margin:0; overflow-wrap:anywhere }
+    pre { min-height:110px; margin:0 0 24px; padding:16px; overflow:auto; border:1px solid #3d4540; background:#050605; color:#ffb3ae; white-space:pre-wrap; overflow-wrap:anywhere }
+    button { appearance:none; font:inherit; font-weight:800 }
+    #retry { border:2px solid #d0ff2e; background:#d0ff2e; color:#0a0c0b; padding:12px 18px; cursor:pointer }
+    #retry:disabled { cursor:wait; opacity:.55 }
+    .voiceless-page { position:relative; min-height:100svh; display:flex; align-items:flex-end; overflow:hidden; isolation:isolate; background:#11110f url("./iwazuru.jpeg") center 35%/cover no-repeat; color:#f7f3e9 }
+    .voiceless-page::before { content:""; position:absolute; inset:0; z-index:-1; background:linear-gradient(180deg,rgba(6,6,5,.08) 8%,rgba(6,6,5,.35) 52%,rgba(6,6,5,.86) 100%),linear-gradient(90deg,rgba(6,6,5,.74) 0%,rgba(6,6,5,.16) 66%,rgba(6,6,5,.3) 100%) }
+    .voiceless-panel { width:min(46rem,100%); padding:clamp(2rem,7vw,6rem); padding-bottom:clamp(2.5rem,9vh,6.5rem) }
+    .voiceless-panel h1 { max-width:13ch; margin:0; font-family:Georgia,"Times New Roman",serif; font-size:clamp(3rem,7vw,6.8rem); font-weight:400; letter-spacing:-.045em; line-height:.94; text-wrap:balance; text-shadow:0 2px 28px rgba(0,0,0,.48) }
+    .voiceless-panel p { margin:clamp(1.5rem,3.5vw,2.5rem) 0 0; font-family:Georgia,"Times New Roman",serif; font-size:clamp(1.15rem,2vw,1.55rem); line-height:1.4; color:rgba(247,243,233,.86); text-shadow:0 1px 16px rgba(0,0,0,.7) }
+    .voiceless-actions { display:flex; flex-wrap:wrap; gap:.75rem; margin-top:clamp(1.6rem,4vw,2.75rem) }
+    .choice { min-width:8.75rem; height:3.6rem; border-radius:.2rem; padding:0 1.65rem; font-size:1.05rem; letter-spacing:.035em; box-shadow:0 8px 26px rgba(0,0,0,.25); cursor:default }
+    .choice-yes { border:1px solid #d7ff2f; background:#d7ff2f; color:#10110d }
+    .choice-undecided { border:1px solid #f7f3e9; background:rgba(247,243,233,.92); color:#171811 }
+    .choice-no { border:1px solid rgba(247,243,233,.72); background:rgba(13,13,11,.48); color:#f7f3e9 }
+    @media(max-width:640px) {
+      .voiceless-page { background-position:58% center }
+      .voiceless-panel { padding-inline:1.35rem }
+      .voiceless-actions { display:grid; grid-template-columns:1fr }
+      .choice { width:100% }
+      dl { grid-template-columns:1fr; gap:4px } dd { margin-bottom:10px }
     }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Welcome to Pledge.</h1>
-    <p class="lede">Retrieving system state.</p>
-
-    <section aria-labelledby="state-heading">
-      <h2 id="state-heading">System state request</h2>
-      <div id="status" class="status pending" role="status" aria-live="polite">Pending</div>
-
-      <dl>
-        <dt>Request URL</dt>
-        <dd id="request-url"></dd>
-        <dt>Started</dt>
-        <dd id="started">—</dd>
-        <dt>Finished</dt>
-        <dd id="finished">—</dd>
-        <dt>Elapsed</dt>
-        <dd id="elapsed">—</dd>
-        <dt>HTTP status</dt>
-        <dd id="http-status">Unavailable</dd>
-        <dt>Response type</dt>
-        <dd id="response-type">Unavailable</dd>
-      </dl>
-
-      <h3>Available detail</h3>
-      <pre id="detail">Request has not completed.</pre>
-      <button id="retry" type="button">Retry state request</button>
+  <main id="diagnostic-page" class="diagnostic-page">
+    <div class="diagnostic-panel">
+      <h1>Welcome to Pledge.</h1>
+      <p class="lede">Retrieving system state.</p>
+      <section aria-labelledby="state-heading">
+        <h2 id="state-heading">System state request</h2>
+        <div id="status" class="status pending" role="status" aria-live="polite">Pending</div>
+        <dl>
+          <dt>Request URL</dt><dd id="request-url"></dd>
+          <dt>Started</dt><dd id="started">—</dd>
+          <dt>Finished</dt><dd id="finished">—</dd>
+          <dt>Elapsed</dt><dd id="elapsed">—</dd>
+          <dt>HTTP status</dt><dd id="http-status">Unavailable</dd>
+          <dt>Response type</dt><dd id="response-type">Unavailable</dd>
+        </dl>
+        <h3>Available detail</h3>
+        <pre id="detail">Request has not completed.</pre>
+        <button id="retry" type="button">Retry state request</button>
+      </section>
+    </div>
+  </main>
+  <main id="voiceless-page" class="voiceless-page" hidden>
+    <section class="voiceless-panel" aria-labelledby="voiceless-title">
+      <h1 id="voiceless-title">Our Lovely System has no voice.</h1>
+      <p>Will you lend yours?</p>
+      <div class="voiceless-actions" aria-label="Response choices">
+        <button class="choice choice-yes" type="button">Yes</button>
+        <button class="choice choice-undecided" type="button">Undecided</button>
+        <button class="choice choice-no" type="button">No</button>
+      </div>
     </section>
   </main>
-
   <script>
     const STATE_URL = "https://api.pledge.ourlovelysystem.org";
+    const diagnosticPage = document.querySelector("#diagnostic-page");
+    const voicelessPage = document.querySelector("#voiceless-page");
     const elements = {
-      status: document.querySelector("#status"),
-      requestUrl: document.querySelector("#request-url"),
-      started: document.querySelector("#started"),
-      finished: document.querySelector("#finished"),
-      elapsed: document.querySelector("#elapsed"),
-      httpStatus: document.querySelector("#http-status"),
-      responseType: document.querySelector("#response-type"),
-      detail: document.querySelector("#detail"),
-      retry: document.querySelector("#retry")
+      status:document.querySelector("#status"), requestUrl:document.querySelector("#request-url"),
+      started:document.querySelector("#started"), finished:document.querySelector("#finished"),
+      elapsed:document.querySelector("#elapsed"), httpStatus:document.querySelector("#http-status"),
+      responseType:document.querySelector("#response-type"), detail:document.querySelector("#detail"),
+      retry:document.querySelector("#retry")
     };
-
     elements.requestUrl.textContent = STATE_URL;
-
-    function setStatus(label, state) {
-      elements.status.textContent = label;
-      elements.status.className = `status ${state}`;
+    function setStatus(label,state) {
+      elements.status.textContent=label;
+      elements.status.className=`status ${state}`;
     }
-
+    function showRunMode(runMode) {
+      const voiceless=runMode==="voiceless";
+      diagnosticPage.hidden=voiceless;
+      voicelessPage.hidden=!voiceless;
+    }
     async function retrieveState() {
-      const startedAt = new Date();
-      const startedClock = performance.now();
-
-      elements.retry.disabled = true;
-      setStatus("Requesting", "pending");
-      elements.started.textContent = startedAt.toISOString();
-      elements.finished.textContent = "—";
-      elements.elapsed.textContent = "—";
-      elements.httpStatus.textContent = "Unavailable";
-      elements.responseType.textContent = "Unavailable";
-      elements.detail.textContent = "Waiting for the browser request to complete.";
-
+      const startedAt=new Date();
+      const startedClock=performance.now();
+      showRunMode(null);
+      elements.retry.disabled=true;
+      setStatus("Requesting","pending");
+      elements.started.textContent=startedAt.toISOString();
+      elements.finished.textContent="—";
+      elements.elapsed.textContent="—";
+      elements.httpStatus.textContent="Unavailable";
+      elements.responseType.textContent="Unavailable";
+      elements.detail.textContent="Waiting for the browser request to complete.";
       try {
-        const response = await fetch(STATE_URL, {
-          method: "GET",
-          headers: { Accept: "application/json" },
-          cache: "no-store"
-        });
-        const body = await response.text();
-
-        elements.httpStatus.textContent = `${response.status} ${response.statusText || ""}`.trim();
-        elements.responseType.textContent = response.headers.get("content-type") || "Not supplied";
-        elements.detail.textContent = body || "The response body was empty.";
-        setStatus(response.ok ? "State received" : "HTTP error", response.ok ? "success" : "error");
-      } catch (error) {
-        setStatus("Request failed", "error");
-        elements.detail.textContent = JSON.stringify({
-          name: error?.name || "Unknown error",
-          message: error?.message || String(error),
-          browserOnline: navigator.onLine,
-          pageOrigin: location.origin,
-          note: "No HTTP response was exposed to page JavaScript. Browser developer tools may contain lower-level DNS, TLS, network, or CORS detail."
-        }, null, 2);
+        const response=await fetch(STATE_URL,{method:"GET",headers:{Accept:"application/json"},cache:"no-store"});
+        const body=await response.text();
+        elements.httpStatus.textContent=`${response.status} ${response.statusText||""}`.trim();
+        elements.responseType.textContent=response.headers.get("content-type")||"Not supplied";
+        elements.detail.textContent=body||"The response body was empty.";
+        if(!response.ok){setStatus("HTTP error","error");return}
+        const state=JSON.parse(body);
+        setStatus("State received","success");
+        showRunMode(state.run_mode);
+      } catch(error) {
+        setStatus("Request failed","error");
+        elements.detail.textContent=JSON.stringify({
+          name:error?.name||"Unknown error", message:error?.message||String(error),
+          browserOnline:navigator.onLine, pageOrigin:location.origin,
+          note:"No HTTP response was exposed to page JavaScript. Browser developer tools may contain lower-level DNS, TLS, network, or CORS detail."
+        },null,2);
       } finally {
-        const finishedAt = new Date();
-        elements.finished.textContent = finishedAt.toISOString();
-        elements.elapsed.textContent = `${Math.round(performance.now() - startedClock)} ms`;
-        elements.retry.disabled = false;
+        elements.finished.textContent=new Date().toISOString();
+        elements.elapsed.textContent=`${Math.round(performance.now()-startedClock)} ms`;
+        elements.retry.disabled=false;
       }
     }
-
-    elements.retry.addEventListener("click", retrieveState);
+    elements.retry.addEventListener("click",retrieveState);
     retrieveState();
   </script>
 </body>

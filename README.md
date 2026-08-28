@@ -6,14 +6,15 @@ Pledge begins without a voice. It asks a visitor to lend one, admits the visitor
 
 ## Current state
 
-The current implementation is a single diagnostic page intended for AWS
-Amplify. It requests system state from:
+The current implementation is a state-driven page intended for AWS Amplify. It
+requests system state from:
 
 `https://api.pledge.ourlovelysystem.org`
 
-That API does not exist in this first test. The page deliberately surfaces the
-resulting browser-visible error so infrastructure can be added and corrected
-one failure at a time. This increment contains no Lambda or API implementation.
+When the API returns `run_mode: "voiceless"`, the page asks the visitor to
+lend Our Lovely System a voice. A missing, `standby`, or unrecognized run mode
+keeps the diagnostic state visible so configuration failures remain explicit.
+The response buttons are intentionally inert in this increment.
 
 ## Start here
 
