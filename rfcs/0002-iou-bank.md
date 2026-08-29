@@ -1,11 +1,14 @@
 # RFC 0002 — IOU Bank
 
-**Status:** Proposed  
+**Status:** Superseded by [RFC 0003 — Ours to Give](./0003-ours-to-give.md)  
 **Date:** 2026-08-29  
 **System:** Our Lovely System — Pledge  
 **Authors:** Will Daly; Codex as recorder and drafting assistant  
 **Related:** [RFC 0001 — Capital Disposition Voting Test](./0001-capital-disposition-voting-test.md)  
-**Supersedes:** Nothing
+**Supersedes:** Nothing  
+**Superseded by:** [RFC 0003 — Ours to Give](./0003-ours-to-give.md)
+
+> **Supersession notice:** The operator rejected the debt and separateness encoded by “I Owe Our Lovely System.” RFC 0003 preserves the market and fulfillment mechanics under the accepted **Ours to Give** framing. This RFC remains available as the record of the superseded proposal.
 
 ## Summary
 
