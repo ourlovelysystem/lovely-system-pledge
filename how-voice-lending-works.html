@@ -21,16 +21,10 @@
     ul { padding-left:1.3rem }
     strong { color:#fff }
     .mocked { color:#d7ff2f; font-weight:700 }
-    .choices { display:flex; flex-wrap:wrap; gap:.75rem; margin-top:4rem }
-    .choice { min-width:8.75rem; height:3.6rem; display:inline-flex; align-items:center; justify-content:center; border:1px solid rgba(247,243,233,.7); border-radius:.2rem; padding:0 1.5rem; background:rgba(13,13,11,.56); color:#f7f3e9; font:800 1rem ui-monospace,SFMono-Regular,Menlo,monospace; text-decoration:none }
-    .choice-primary { border-color:#d7ff2f; background:#d7ff2f; color:#10110d }
-    .choice-muted { background:rgba(247,243,233,.92); color:#171811 }
-    .fine-print { margin-top:2rem; color:rgba(247,243,233,.58); font:400 .9rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace }
+    .fine-print { margin-top:4rem; color:rgba(247,243,233,.58); font:400 .9rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace }
     @media(max-width:640px) {
       .page::before { background-position:62% center }
       main { padding-inline:1.35rem }
-      .choices { display:grid; grid-template-columns:1fr }
-      .choice { width:100% }
     }
   </style>
 </head>
@@ -74,11 +68,6 @@
         </ul>
       </section>
 
-      <div class="choices" aria-label="Voice-lending choices">
-        <button class="choice choice-primary" type="button">Yes</button>
-        <a class="choice choice-muted" href="./index.html">Not now</a>
-        <button class="choice" type="button">No</button>
-      </div>
       <p class="fine-print">Visiting this page does not begin recording and does not imply consent.</p>
     </main>
   </div>
