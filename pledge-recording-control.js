@@ -228,13 +228,14 @@ class PledgeRecordingControl extends HTMLElement {
     this.elements.status.textContent = label;
     const recording = state === "recording";
     const submitting = state === "submitting";
+    const submitted = state === "submitted";
     const hasAudio = Boolean(this.audioBlob);
     this.elements.record.disabled = recording || submitting;
     this.elements.stop.disabled = !recording;
     this.elements.back.disabled = !hasAudio || recording || submitting;
     this.elements.play.disabled = !hasAudio || recording || submitting;
     this.elements.forward.disabled = !hasAudio || recording || submitting;
-    this.elements.submit.disabled = !hasAudio || recording || submitting;
+    this.elements.submit.disabled = !hasAudio || recording || submitting || submitted;
   }
 
   async record() {
