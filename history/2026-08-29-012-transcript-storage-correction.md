@@ -178,3 +178,27 @@ No transcription pipeline has been implemented by this record.
 - [Pledge project history convention](./README.md)
 - [Computahhh Event 151](https://github.com/ourlovelysystem/lovely-system-computahhh/blob/main/events/2026-08-29-151.md)
 - [Hostile review invitation](https://github.com/ourlovelysystem/lovely-system-nasty-oracle/issues/1)
+
+## Subsequent correction — hostile review scope
+
+The operator subsequently corrected the review invitation:
+
+> I don't want to narrow the scope of the hostile review. I am also considering the possibility that we may not want to keep the transcript at all.
+
+The earlier list of suggested attacks is preserved as evidence of how Codex narrowed the invitation. It is not the scope of the requested review.
+
+The hostile reviewer is invited to attack the entire design, its premises, its omissions, and the framing of the question. The reviewer is specifically free to reject every presented storage option, including the assumption that Pledge should retain transcript text after content evaluation.
+
+No decision has been made to retain or discard transcripts. The live candidate set now includes at least:
+
+- retain transcript text in DynamoDB;
+- retain complete transcript output in S3;
+- retain both;
+- retain the transcript temporarily and purge it after evaluation;
+- retain only derived metrics and the content decision;
+- retain only evidence that transcription occurred;
+- retain nothing derived after evaluation; and
+- reject transcription as the validation mechanism.
+
+The reviewer is not required to choose among these candidates and may identify alternatives not listed here.
+
