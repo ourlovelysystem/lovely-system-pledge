@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recording control — Pledge</title>
+  <style>
+    :root { color-scheme: dark; background: #090b09; color: #f7f3e9; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 80% 0%, rgba(215,255,47,.08), transparent 30rem),
+        #090b09;
+    }
+    main { width: min(58rem, 100%); margin: 0 auto; padding: clamp(1.25rem, 5vw, 4rem); }
+    nav { margin-bottom: clamp(2rem, 6vw, 4rem); }
+    nav a { color: #d7ff2f; font: 800 .92rem ui-monospace, monospace; text-decoration: none; }
+    h1 { margin: 0; font: 500 clamp(2.5rem, 7vw, 5.5rem)/.95 Georgia, serif; letter-spacing: -.045em; }
+    .lede { max-width: 42rem; margin: 1.25rem 0 2.5rem; color: #b9c0bb; font: 500 1.05rem/1.6 ui-monospace, monospace; }
+  </style>
+  <script type="module" src="./pledge-recording-control.js"></script>
+</head>
+<body>
+  <main>
+    <nav><a href="./index.html">← Back to Pledge</a></nav>
+    <h1>Lend Pledge a voice.</h1>
+    <p class="lede">Record the prompt, inspect what you made, choose the borrowing limits, and submit it. The receipt identifies the borrowed electronic valuable.</p>
+
+    <pledge-recording-control
+      prompt="Ask the listener: Who are you?"
+      descriptor="bootstrap voice"
+      version="0.1.0">
+    </pledge-recording-control>
+  </main>
+</body>
+</html>
