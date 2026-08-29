@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How voice lending works — Pledge</title>
+  <style>
+    :root { color-scheme:dark; font-family:Georgia,"Times New Roman",serif; background:#11110f; color:#f7f3e9 }
+    * { box-sizing:border-box }
+    body { margin:0; min-height:100vh; background:#11110f }
+    .page { position:relative; min-height:100vh; isolation:isolate; overflow:hidden }
+    .page::before { content:""; position:fixed; inset:0; z-index:-2; background:#11110f url("./iwazuru.jpeg") 72% center/cover no-repeat }
+    .page::after { content:""; position:fixed; inset:0; z-index:-1; background:linear-gradient(90deg,rgba(8,8,7,.96) 0%,rgba(8,8,7,.90) 50%,rgba(8,8,7,.56) 100%),linear-gradient(180deg,rgba(8,8,7,.2),rgba(8,8,7,.8)) }
+    main { width:min(52rem,100%); padding:clamp(2rem,7vw,6rem); padding-bottom:7rem }
+    .back { display:inline-block; margin-bottom:clamp(3rem,8vh,6rem); color:#d7ff2f; font:700 .95rem ui-monospace,SFMono-Regular,Menlo,monospace; text-decoration:none }
+    h1 { max-width:12ch; margin:0; font-size:clamp(3rem,7vw,6rem); font-weight:400; letter-spacing:-.045em; line-height:.95; text-wrap:balance }
+    .intro { max-width:38rem; margin:1.75rem 0 4rem; color:rgba(247,243,233,.82); font-size:clamp(1.15rem,2vw,1.45rem); line-height:1.55 }
+    section { max-width:42rem; margin-top:3.5rem; padding-top:2rem; border-top:1px solid rgba(247,243,233,.24) }
+    h2 { margin:0 0 1rem; font:800 clamp(1.1rem,2vw,1.35rem) ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.02em }
+    p, li { font-size:1.08rem; line-height:1.7; color:rgba(247,243,233,.86) }
+    ul { padding-left:1.3rem }
+    strong { color:#fff }
+    .mocked { color:#d7ff2f; font-weight:700 }
+    .choices { display:flex; flex-wrap:wrap; gap:.75rem; margin-top:4rem }
+    .choice { min-width:8.75rem; height:3.6rem; display:inline-flex; align-items:center; justify-content:center; border:1px solid rgba(247,243,233,.7); border-radius:.2rem; padding:0 1.5rem; background:rgba(13,13,11,.56); color:#f7f3e9; font:800 1rem ui-monospace,SFMono-Regular,Menlo,monospace; text-decoration:none }
+    .choice-primary { border-color:#d7ff2f; background:#d7ff2f; color:#10110d }
+    .choice-muted { background:rgba(247,243,233,.92); color:#171811 }
+    .fine-print { margin-top:2rem; color:rgba(247,243,233,.58); font:400 .9rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace }
+    @media(max-width:640px) {
+      .page::before { background-position:62% center }
+      main { padding-inline:1.35rem }
+      .choices { display:grid; grid-template-columns:1fr }
+      .choice { width:100% }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <main>
+      <a class="back" href="./index.html">← Back to Pledge</a>
+      <h1>Before you lend your voice.</h1>
+      <p class="intro">Your voice is not a donation. Our Lovely System borrows it at your discretion, for a bounded purpose, with a receipt and a way to ask for its deletion.</p>
+
+      <section>
+        <h2>How Our Lovely System understands your recording</h2>
+        <p>Our Lovely System will send your recording to an AWS transcription service, which converts spoken words into text. Our Lovely System uses that text for loose functional validation—for example, to confirm that the recording contains understandable speech and responds to what was asked.</p>
+        <p>That is the boundary of the validation. Our Lovely System is not grading your performance or looking for one correct response. Creativity, humor, character, unusual phrasing, dramatic delivery, and a little joyful weirdness are welcome. <span class="mocked">Dull robotic responses may be mocked.</span></p>
+      </section>
+
+      <section>
+        <h2>How the borrowed voice may be used</h2>
+        <p>Our Lovely System may use an accepted recording to give a future visitor a human voice to respond to. The recording will be used only for the purpose described when it is requested and only within the stated time and use boundaries.</p>
+        <p>Our Lovely System does not claim ownership of your voice and will not quietly turn a narrow loan into a general license.</p>
+      </section>
+
+      <section>
+        <h2>Your receipt</h2>
+        <p>If Our Lovely System accepts the recording, you will receive a receipt identifying what was borrowed, the allowed use, the applicable boundaries, and the information needed to request deletion.</p>
+      </section>
+
+      <section>
+        <h2>Deletion</h2>
+        <p>You may ask Our Lovely System to stop using the recording and delete it. The deletion process will use the receipt to identify the loan and will provide confirmation when the request has been completed.</p>
+      </section>
+
+      <section>
+        <h2>The short version</h2>
+        <ul>
+          <li>Your voice is borrowed, not donated.</li>
+          <li>Our Lovely System uses transcription for loose validation.</li>
+          <li>Use is bounded by the stated purpose and terms.</li>
+          <li>You receive a receipt.</li>
+          <li>You may request deletion.</li>
+        </ul>
+      </section>
+
+      <div class="choices" aria-label="Voice-lending choices">
+        <button class="choice choice-primary" type="button">Yes</button>
+        <a class="choice choice-muted" href="./index.html">Not now</a>
+        <button class="choice" type="button">No</button>
+      </div>
+      <p class="fine-print">Visiting this page does not begin recording and does not imply consent.</p>
+    </main>
+  </div>
+</body>
+</html>

@@ -15,6 +15,9 @@ When the API returns `run_mode: "voiceless"`, the page asks the visitor to
 lend Our Lovely System a voice. A missing, `standby`, or unrecognized run mode
 keeps the diagnostic state visible so configuration failures remain explicit.
 The response buttons are intentionally inert in this increment.
+The `Undecided` choice opens a separate explanation of voice lending,
+transcription, bounded use, receipting, and deletion. Visiting that page does
+not begin recording or imply consent.
 
 ## Start here
 
