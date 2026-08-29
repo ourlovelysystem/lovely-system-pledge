@@ -37,6 +37,18 @@ class PledgeRecordingControl extends HTMLElement {
       "https://api.pledge.ourlovelysystem.org/electronic-valuables";
   }
 
+  get recordingMimeType() {
+    const supportedTypes = [
+      "audio/webm;codecs=opus",
+      "audio/mp4;codecs=mp4a.40.2",
+      "audio/ogg;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/ogg"
+    ];
+    return supportedTypes.find((type) => MediaRecorder.isTypeSupported(type)) || null;
+  }
+
   render() {
     this.shadowRoot.innerHTML = `
       <style>
@@ -220,14 +232,14 @@ class PledgeRecordingControl extends HTMLElement {
   syncAttributes() {
     this.elements.prompt.textContent = this.getAttribute("prompt") || "Who are you?";
     this.elements.descriptor.textContent = this.getAttribute("descriptor") || "bootstrap voice";
-    this.elements.version.textContent = this.getAttribute("version") || "0.1.2";
+    this.elements.version.textContent = this.getAttribute("version") || "0.1.3";
   }
 
   setState(state, label) {
     this.dataset.state = state;
     this.elements.status.textContent = label;
     const recording = state === "recording";
-    const busy = state === "processing" || state === "submitting";
+    const busy = state === "submitting";
     const submitted = state === "submitted";
     const hasAudio = Boolean(this.audioBlob);
     this.elements.record.disabled = recording || busy;
@@ -246,10 +258,15 @@ class PledgeRecordingControl extends HTMLElement {
     }
 
     try {
+      const mimeType = this.recordingMimeType;
+      if (!mimeType) {
+        this.showError("This browser does not provide a supported recording format.");
+        return;
+      }
       this.stopTracks();
       this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.chunks = [];
-      this.mediaRecorder = new MediaRecorder(this.mediaStream);
+      this.mediaRecorder = new MediaRecorder(this.mediaStream, { mimeType });
       this.mediaRecorder.addEventListener("dataavailable", (event) => {
         if (event.data.size) this.chunks.push(event.data);
       });
@@ -272,94 +289,17 @@ class PledgeRecordingControl extends HTMLElement {
     if (this.mediaRecorder?.state === "recording") this.mediaRecorder.stop();
   }
 
-  async finishRecording() {
+  finishRecording() {
     this.clearTimer();
     this.stopTracks();
-    this.audioBlob = null;
-    this.setState("processing", "Preparing WAV");
-
-    try {
-      const type = this.mediaRecorder?.mimeType || this.chunks[0]?.type || "audio/webm";
-      const capturedAudio = new Blob(this.chunks, { type });
-      this.audioBlob = await this.toWav(capturedAudio);
-      if (this.audioUrl) URL.revokeObjectURL(this.audioUrl);
-      this.audioUrl = URL.createObjectURL(this.audioBlob);
-      this.elements.audio.src = this.audioUrl;
-      this.elements.audio.currentTime = 0;
-      this.elements.clock.textContent = "00:00";
-      this.setState("recorded", "Recorded");
-    } catch (error) {
-      this.audioBlob = null;
-      this.showError("The recording could not be prepared as WAV audio.");
-    }
-  }
-
-  async toWav(blob) {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    const OfflineAudioContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-    if (!AudioContextClass || !OfflineAudioContextClass) {
-      throw new Error("Audio conversion is not supported.");
-    }
-
-    const audioContext = new AudioContextClass();
-    try {
-      const decoded = await audioContext.decodeAudioData(await blob.arrayBuffer());
-      const mono = audioContext.createBuffer(1, decoded.length, decoded.sampleRate);
-      const monoData = mono.getChannelData(0);
-      for (let channel = 0; channel < decoded.numberOfChannels; channel += 1) {
-        const channelData = decoded.getChannelData(channel);
-        for (let sample = 0; sample < decoded.length; sample += 1) {
-          monoData[sample] += channelData[sample] / decoded.numberOfChannels;
-        }
-      }
-
-      const sampleRate = 16000;
-      const frameCount = Math.max(1, Math.ceil(decoded.duration * sampleRate));
-      const offline = new OfflineAudioContextClass(1, frameCount, sampleRate);
-      const source = offline.createBufferSource();
-      source.buffer = mono;
-      source.connect(offline.destination);
-      source.start(0);
-      const rendered = await offline.startRendering();
-      return this.encodeWav(rendered.getChannelData(0), sampleRate);
-    } finally {
-      await audioContext.close();
-    }
-  }
-
-  encodeWav(samples, sampleRate) {
-    const bytesPerSample = 2;
-    const dataSize = samples.length * bytesPerSample;
-    const buffer = new ArrayBuffer(44 + dataSize);
-    const view = new DataView(buffer);
-
-    const writeText = (offset, text) => {
-      for (let index = 0; index < text.length; index += 1) {
-        view.setUint8(offset + index, text.charCodeAt(index));
-      }
-    };
-
-    writeText(0, "RIFF");
-    view.setUint32(4, 36 + dataSize, true);
-    writeText(8, "WAVE");
-    writeText(12, "fmt ");
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * bytesPerSample, true);
-    view.setUint16(32, bytesPerSample, true);
-    view.setUint16(34, 16, true);
-    writeText(36, "data");
-    view.setUint32(40, dataSize, true);
-
-    for (let index = 0; index < samples.length; index += 1) {
-      const sample = Math.max(-1, Math.min(1, samples[index]));
-      const pcm = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-      view.setInt16(44 + (index * bytesPerSample), Math.round(pcm), true);
-    }
-
-    return new Blob([buffer], { type: "audio/wav" });
+    if (this.audioUrl) URL.revokeObjectURL(this.audioUrl);
+    const type = this.mediaRecorder.mimeType;
+    this.audioBlob = new Blob(this.chunks, { type });
+    this.audioUrl = URL.createObjectURL(this.audioBlob);
+    this.elements.audio.src = this.audioUrl;
+    this.elements.audio.currentTime = 0;
+    this.elements.clock.textContent = "00:00";
+    this.setState("recorded", "Recorded");
   }
 
   togglePlayback() {
@@ -395,7 +335,7 @@ class PledgeRecordingControl extends HTMLElement {
 
     const expiresAt = Math.floor(Date.now() / 1000) + (terms.days * 86400);
     const headers = {
-      "content-type": "audio/wav",
+      "content-type": this.audioBlob.type,
       "x-pledge-prompt": this.elements.prompt.textContent,
       "x-pledge-minimum-uses": String(terms.minimum),
       "x-pledge-maximum-uses": String(terms.maximum),

@@ -123,3 +123,4 @@ This is a repository convention, not an optional writing preference. An agent gi
 | 012 | 2026-08-29 | Corrected | [Transcript storage recommendation corrected](./2026-08-29-012-transcript-storage-correction.md) |
 | 013 | 2026-08-29 | Implemented | [Duplicate recording submission prevented](./2026-08-29-013-duplicate-submission-prevention.md) |
 | 014 | 2026-08-29 | Implemented | [Recording format fixed as WAV PCM](./2026-08-29-014-recording-format-contract.md) |
+| 015 | 2026-08-29 | Corrected | [Native recording replaces WAV conversion](./2026-08-29-015-native-recording-format.md) |
