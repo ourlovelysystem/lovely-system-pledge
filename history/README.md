@@ -120,3 +120,4 @@ This is a repository convention, not an optional writing preference. An agent gi
 | 005 | 2026-08-27 | Implemented | [Durable submission intake](./2026-08-27-005-durable-submission-intake.md) |
 | 006 | 2026-08-27 | Implemented, later removed | [Asynchronous transcription and provisional evaluation](./2026-08-27-006-asynchronous-transcription-and-evaluation.md) |
 | 007 | 2026-08-28 | Reset | [Implementation teardown](./2026-08-28-007-implementation-teardown.md) |
+| 012 | 2026-08-29 | Corrected | [Transcript storage recommendation corrected](./2026-08-29-012-transcript-storage-correction.md) |
