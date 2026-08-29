@@ -124,3 +124,4 @@ This is a repository convention, not an optional writing preference. An agent gi
 | 013 | 2026-08-29 | Implemented | [Duplicate recording submission prevented](./2026-08-29-013-duplicate-submission-prevention.md) |
 | 014 | 2026-08-29 | Implemented | [Recording format fixed as WAV PCM](./2026-08-29-014-recording-format-contract.md) |
 | 015 | 2026-08-29 | Corrected | [Native recording replaces WAV conversion](./2026-08-29-015-native-recording-format.md) |
+| 016 | 2026-08-29 | Accepted direction | [Native audio retained; playback conversion deferred](./2026-08-29-016-native-audio-conversion-deferred.md) |
