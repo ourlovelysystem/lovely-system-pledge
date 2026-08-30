@@ -414,6 +414,34 @@ def update_validation(receipt_id, job_name, validation):
     )
 
 
+def apply_content_decision(receipt_id, job_name, validation):
+    candidate = validation["content_decision_candidate"]
+    catalog_eligible = candidate == "usable"
+
+    dynamodb.update_item(
+        TableName=ELECTRONIC_VALUABLES_TABLE,
+        Key={"electronic_valuable_id": {"S": receipt_id}},
+        UpdateExpression=(
+            "SET #catalog_eligible = :catalog_eligible, "
+            "#content_decision = :content_decision, "
+            "#updated_at = :updated_at"
+        ),
+        ConditionExpression="#transcription_job_name = :job_name",
+        ExpressionAttributeNames={
+            "#catalog_eligible": "catalog_eligible",
+            "#content_decision": "content_decision",
+            "#updated_at": "updated_at",
+            "#transcription_job_name": "transcription_job_name",
+        },
+        ExpressionAttributeValues={
+            ":catalog_eligible": {"BOOL": catalog_eligible},
+            ":content_decision": {"S": candidate},
+            ":updated_at": {"N": str(int(time.time()))},
+            ":job_name": {"S": job_name},
+        },
+    )
+
+
 def lambda_handler(event, context):
     detail = event.get("detail", {})
     job_name = detail.get("TranscriptionJobName")
@@ -477,6 +505,8 @@ def lambda_handler(event, context):
         validation = failed_evaluation(error)
 
     update_validation(receipt_id, job_name, validation)
+    if validation["validation_status"] == VALIDATION_STATUS_EVALUATED:
+        apply_content_decision(receipt_id, job_name, validation)
 
     return {
         "ok": True,
