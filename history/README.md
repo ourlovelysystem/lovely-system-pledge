@@ -127,3 +127,4 @@ This is a repository convention, not an optional writing preference. An agent gi
 | 016 | 2026-08-29 | Accepted direction | [Native audio retained; playback conversion deferred](./2026-08-29-016-native-audio-conversion-deferred.md) |
 | 017 | 2026-08-29 | Proposed | [Bedrock functional-match evaluation pending](./2026-08-29-017-bedrock-functional-match-pending.md) |
 | 018 | 2026-08-30 | Accepted direction | [Catalog-driven ready state](./2026-08-30-018-catalog-driven-ready-state.md) |
+| 019 | 2026-08-30 | Implemented | [Ready transition implemented](./2026-08-30-019-ready-transition-implemented.md) |
