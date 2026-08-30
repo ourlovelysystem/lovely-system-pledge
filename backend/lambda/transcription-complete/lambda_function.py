@@ -7,6 +7,7 @@ import urllib.request
 import uuid
 
 import boto3
+from botocore.exceptions import ClientError
 
 
 dynamodb = boto3.client("dynamodb")
@@ -29,6 +30,8 @@ REQUESTED_FUNCTION = "Ask the listener to identify themselves."
 REFERENCE_TEXT = "Who are you?"
 VALIDATION_STATUS_EVALUATED = "evaluated"
 VALIDATION_STATUS_FAILED = "evaluation_failed"
+RUN_MODE_PARAMETER = "run_mode"
+RUN_MODE_READY = "ready"
 
 
 def content_decision_candidate(score):
@@ -442,6 +445,35 @@ def apply_content_decision(receipt_id, job_name, validation):
     )
 
 
+def set_ready_run_mode_if_needed():
+    try:
+        dynamodb.update_item(
+            TableName=STATE_TABLE,
+            Key={"parameter_name": {"S": RUN_MODE_PARAMETER}},
+            UpdateExpression=(
+                "SET #parameter_value = :ready, "
+                "#updated_at = :updated_at"
+            ),
+            ConditionExpression=(
+                "attribute_not_exists(#parameter_value) OR "
+                "#parameter_value <> :ready"
+            ),
+            ExpressionAttributeNames={
+                "#parameter_value": "parameter_value",
+                "#updated_at": "updated_at",
+            },
+            ExpressionAttributeValues={
+                ":ready": {"S": RUN_MODE_READY},
+                ":updated_at": {"N": str(int(time.time()))},
+            },
+        )
+        return True
+    except ClientError as error:
+        if error.response["Error"].get("Code") == "ConditionalCheckFailedException":
+            return False
+        raise
+
+
 def lambda_handler(event, context):
     detail = event.get("detail", {})
     job_name = detail.get("TranscriptionJobName")
@@ -507,6 +539,8 @@ def lambda_handler(event, context):
     update_validation(receipt_id, job_name, validation)
     if validation["validation_status"] == VALIDATION_STATUS_EVALUATED:
         apply_content_decision(receipt_id, job_name, validation)
+        if validation["content_decision_candidate"] == "usable":
+            set_ready_run_mode_if_needed()
 
     return {
         "ok": True,
