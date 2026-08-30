@@ -31,6 +31,8 @@
     .choice-yes { border:1px solid #d7ff2f; background:#d7ff2f; color:#10110d }
     .choice-undecided { border:1px solid #f7f3e9; background:rgba(247,243,233,.92); color:#171811 }
     .choice-no { border:1px solid rgba(247,243,233,.72); background:rgba(13,13,11,.48); color:#f7f3e9 }
+    .ready-page { min-height:100svh; display:grid; place-items:center; background:#080a09; color:#f2f5f3 }
+    .ready-page h1 { margin:0; font:400 clamp(3rem,12vw,9rem)/1 Georgia,"Times New Roman",serif; letter-spacing:-.05em }
     @media(max-width:640px) {
       .voiceless-page { background-position:58% center }
       .voiceless-panel { padding-inline:1.35rem }
@@ -73,10 +75,14 @@
       </div>
     </section>
   </main>
+  <main id="ready-page" class="ready-page" hidden>
+    <h1>Ready.</h1>
+  </main>
   <script>
     const STATE_URL = "https://api.pledge.ourlovelysystem.org";
     const diagnosticPage = document.querySelector("#diagnostic-page");
     const voicelessPage = document.querySelector("#voiceless-page");
+    const readyPage = document.querySelector("#ready-page");
     const elements = {
       status:document.querySelector("#status"), requestUrl:document.querySelector("#request-url"),
       started:document.querySelector("#started"), finished:document.querySelector("#finished"),
@@ -91,8 +97,10 @@
     }
     function showRunMode(runMode) {
       const voiceless=runMode==="voiceless";
-      diagnosticPage.hidden=voiceless;
+      const ready=runMode==="ready";
+      diagnosticPage.hidden=voiceless||ready;
       voicelessPage.hidden=!voiceless;
+      readyPage.hidden=!ready;
     }
     async function retrieveState() {
       const startedAt=new Date();
