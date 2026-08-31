@@ -89,8 +89,9 @@
     submit.addEventListener("click", async () => {
       submit.disabled = true; setStatus("Uploading response.");
       try {
-        const upload = await api(`/door-sessions/${session.session_id}/upload-url`, { method:"POST", headers:tokenHeaders({ "content-type":"application/json" }), body:JSON.stringify({ content_type:responseBlob.type }) });
-        const uploaded = await fetch(upload.upload_url, { method:"PUT", headers:{ "content-type":responseBlob.type }, body:responseBlob });
+        const contentType = responseBlob.type.split(";", 1)[0];
+        const upload = await api(`/door-sessions/${session.session_id}/upload-url`, { method:"POST", headers:tokenHeaders({ "content-type":"application/json" }), body:JSON.stringify({ content_type:contentType }) });
+        const uploaded = await fetch(upload.upload_url, { method:"PUT", headers:{ "content-type":contentType }, body:responseBlob });
         if (!uploaded.ok) throw new Error(`Audio upload failed (${uploaded.status}).`);
         await api(`/door-sessions/${session.session_id}/submit`, { method:"POST", headers:tokenHeaders() });
         setStatus("Response submitted."); result.textContent = "Pledge received the response. Transcription continues after you leave this page."; result.hidden = false;
