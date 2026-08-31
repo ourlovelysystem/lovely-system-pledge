@@ -17,6 +17,7 @@ s3 = boto3.client("s3")
 transcribe = boto3.client("transcribe")
 TABLE_NAME = os.environ["DOOR_SESSIONS_TABLE"]
 TEMPORARY_SESSIONS_BUCKET = os.environ["TEMPORARY_SESSIONS_BUCKET"]
+ELECTRONIC_VALUABLES_TABLE = os.environ["ELECTRONIC_VALUABLES_TABLE"]
 SESSION_VALID_SECONDS = int(os.environ.get("SESSION_VALID_SECONDS", "43200"))
 SESSION_TTL_SECONDS = int(os.environ.get("SESSION_TTL_SECONDS", "86400"))
 CHALLENGE_ID = "who-are-you-v1"
@@ -76,8 +77,47 @@ def authorized_session(event):
     return item, None
 
 
+def number_value(item, name, default=0):
+    value = item.get(name, {}).get("N")
+    return float(value) if value is not None else default
+
+
+def select_challenge(now):
+    """Choose an eligible borrowed challenge, prioritizing unmet use commitments."""
+    candidates = []
+    request = {"TableName": ELECTRONIC_VALUABLES_TABLE}
+    while True:
+        result = dynamodb.scan(**request)
+        for item in result.get("Items", []):
+            if not item.get("catalog_eligible", {}).get("BOOL"):
+                continue
+            if item.get("status", {}).get("S") != "borrowed":
+                continue
+            if number_value(item, "expires_at") <= now:
+                continue
+            if not item.get("object_key", {}).get("S"):
+                continue
+            if not item.get("content_type", {}).get("S"):
+                continue
+            candidates.append(item)
+        key = result.get("LastEvaluatedKey")
+        if not key:
+            break
+        request["ExclusiveStartKey"] = key
+
+    if not candidates:
+        raise ValueError("No eligible borrowed challenge is available.")
+
+    priority = [
+        item for item in candidates
+        if number_value(item, "use_count") < number_value(item, "minimum_uses")
+    ]
+    return secrets.choice(priority or candidates)
+
+
 def create_session():
     now = int(time.time())
+    challenge = select_challenge(now)
     session_id = str(uuid.uuid4())
     token = secrets.token_urlsafe(32)
     valid_until = now + SESSION_VALID_SECONDS
@@ -89,6 +129,9 @@ def create_session():
             "browser_session_hash": {"S": token_hash(token)},
             "status": {"S": "ready"},
             "challenge_id": {"S": CHALLENGE_ID},
+            "challenge_electronic_valuable_id": challenge["electronic_valuable_id"],
+            "challenge_object_key": challenge["object_key"],
+            "challenge_content_type": challenge["content_type"],
             "recording_seconds": {"N": str(RECORDING_SECONDS)},
             "created_at": {"N": str(now)},
             "updated_at": {"N": str(now)},
@@ -97,14 +140,55 @@ def create_session():
         },
         ConditionExpression="attribute_not_exists(session_id)",
     )
+    challenge_url = s3.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": challenge["bucket"]["S"],
+            "Key": challenge["object_key"]["S"],
+        },
+        ExpiresIn=300,
+    )
     return response(201, {
         "session_id": session_id,
         "browser_session_token": token,
         "status": "ready",
         "challenge_id": CHALLENGE_ID,
+        "challenge_audio_url": challenge_url,
+        "challenge_audio_url_expires_in_seconds": 300,
         "recording_seconds": RECORDING_SECONDS,
         "valid_until": valid_until,
     })
+
+
+def acknowledge_challenge(event):
+    item, error_response = authorized_session(event)
+    if error_response:
+        return error_response
+    session_id = item["session_id"]["S"]
+    challenge_id = item["challenge_electronic_valuable_id"]["S"]
+    now = int(time.time())
+    try:
+        dynamodb.update_item(
+            TableName=TABLE_NAME,
+            Key={"session_id": {"S": session_id}},
+            UpdateExpression="SET challenge_played_at = :now, updated_at = :now",
+            ConditionExpression="attribute_not_exists(challenge_played_at)",
+            ExpressionAttributeValues={":now": {"N": str(now)}},
+        )
+        dynamodb.update_item(
+            TableName=ELECTRONIC_VALUABLES_TABLE,
+            Key={"electronic_valuable_id": {"S": challenge_id}},
+            UpdateExpression="SET use_count = if_not_exists(use_count, :zero) + :one, updated_at = :now",
+            ConditionExpression="catalog_eligible = :eligible AND expires_at > :now",
+            ExpressionAttributeValues={
+                ":zero": {"N": "0"}, ":one": {"N": "1"},
+                ":now": {"N": str(now)}, ":eligible": {"BOOL": True},
+            },
+        )
+    except ClientError as error:
+        if error.response["Error"].get("Code") != "ConditionalCheckFailedException":
+            raise
+    return response(200, {"session_id": session_id, "challenge_played": True})
 
 
 def get_session(event):
@@ -230,6 +314,8 @@ def lambda_handler(event, context):
     method = event.get("requestContext", {}).get("http", {}).get("method")
     if method == "POST":
         if event.get("pathParameters", {}).get("session_id"):
+            if event.get("rawPath", "").endswith("/challenge-played"):
+                return acknowledge_challenge(event)
             if event.get("rawPath", "").endswith("/submit"):
                 return submit_recording(event)
             return create_upload_url(event)
