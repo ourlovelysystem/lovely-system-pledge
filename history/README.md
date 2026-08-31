@@ -129,3 +129,4 @@ This is a repository convention, not an optional writing preference. An agent gi
 | 018 | 2026-08-30 | Accepted direction | [Catalog-driven ready state](./2026-08-30-018-catalog-driven-ready-state.md) |
 | 019 | 2026-08-30 | Implemented | [Ready transition implemented](./2026-08-30-019-ready-transition-implemented.md) |
 | 020 | 2026-08-30 | Accepted direction | [State-record contract](./2026-08-30-020-state-record-contract.md) |
+| 021 | 2026-08-31 | Accepted direction | [Receipt claim and expiration policy](./2026-08-31-021-receipt-claim-and-expiration-policy.md) |

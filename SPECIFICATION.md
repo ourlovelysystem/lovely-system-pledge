@@ -1,8 +1,8 @@
 # Pledge Bootstrap Voice Solicitation Specification
 
-**Version:** 0.0.0-alpha.1  
-**Status:** Initial recoverable draft  
-**Date:** 2026-08-27  
+**Version:** 0.0.0-alpha.2  
+**Status:** Accepted policy direction; claim and purge enforcement not yet implemented  
+**Date:** 2026-08-31  
 **Project:** `pledge.ourlovelysystem.org`
 
 ## 1. Purpose
@@ -278,15 +278,36 @@ After testing and validation, ordinary options are expected to move toward perio
 When the borrowing period expires:
 
 1. the track immediately becomes ineligible for playback;
-2. the audio track is purged;
-3. associated transcriptions are purged; and
-4. the catalogue is recalculated.
+2. an **unclaimed** track is queued for aggressive removal;
+3. its audio, transcript, and derived content are purged;
+4. the catalogue is recalculated; and
+5. no later claim can restore the removed content.
 
-An audit record may preserve that a submission and purge event occurred without preserving the expired voice or transcript. The exact non-content audit fields remain to be defined.
+The system must stop using an unclaimed item at expiration even if physical deletion is still in progress. Storage lifecycle timing is not permission to continue playback, transcription, or other processing.
+
+An audit record may preserve that a submission, claim, expiration, or purge event occurred without preserving the expired voice or transcript. The exact non-content audit fields remain to be defined.
 
 The authorization clock and its start event must be explicit. Candidate start events include envelope acceptance, catalogue acceptance, or first use. This version does not select among them.
 
-## 12. Minimum-use commitment
+## 12. Receipt claim before expiration
+
+An anonymous borrowed electronic valuable may be claimed only **before** its `expires_at` time.
+
+To claim it, the receipt holder must:
+
+1. create or use a durable authenticated Our Lovely System account;
+2. present the receipt for the specific electronic valuable; and
+3. complete the claim while the borrowed item is still unexpired.
+
+The receipt is possession evidence, not proof that the claimant is the speaker, the original lender, or the only person with an interest in the recording. Pledge does not conceal that limitation. It makes the claimant known in the act of claiming.
+
+A completed claim moves the item out of anonymous borrowed custody and into known-account custody. It prevents the default expiration purge for that item. The exact durable retention, withdrawal, and account-management rules for claimed items are deferred; they must be defined before the claim feature is exposed.
+
+The claim is a public accountability event. The public record must identify the known claimant, the item claimed, and the claim time. It must preserve the item's prior anonymous-lending status and applicable terms without publishing the secret receipt. Where the original lending record includes a displayable self-identification, the record may show that asserted identity alongside the claimant's identity. Pledge will not turn a contested claim into invisible private custody.
+
+After `expires_at`, the borrowed item cannot be claimed. Its removal is the default and is intentionally enforced aggressively.
+
+## 13. Minimum-use commitment
 
 A contribution may carry an **at least X uses** parameter.
 
@@ -306,7 +327,7 @@ Time-bound permission remains controlling. A minimum-use commitment must not sil
 
 The interface must not describe “at least X” as guaranteed unless the system actually guarantees it within the authorized period.
 
-## 13. Durable records
+## 14. Durable records
 
 A minimal submission record should preserve:
 
@@ -335,6 +356,9 @@ validation_policy_version
 retention_policy_version
 withdrawn_at
 purged_at
+claimed_at
+claimed_by_account_id
+claim_public_record_id
 created_at
 updated_at
 ```
@@ -343,7 +367,7 @@ This list expresses recoverable intent, not a locked physical schema.
 
 The system should distinguish temporary content from durable event metadata so that audio and transcripts can be purged without erasing the fact that governed processing occurred.
 
-## 14. State derivation
+## 15. State derivation
 
 The landing behavior is derived from current inventory and history.
 
@@ -355,7 +379,7 @@ The landing behavior is derived from current inventory and history.
 
 Eligibility is computed from durable state. It should not depend on a manually maintained “has voice” flag that can drift away from the catalogue.
 
-## 15. Initial functional boundary
+## 16. Initial functional boundary
 
 The first build should include:
 
@@ -379,9 +403,9 @@ The first build should include:
 - automatic purge of expired audio and transcripts; and
 - sulk-mode presentation.
 
-## 16. Explicit non-requirements for this version
+## 17. Explicit non-requirements for this version
 
-Version 0.0.0-alpha.1 does not require:
+Version 0.0.0-alpha.2 does not require:
 
 - exact-phrase matching;
 - synchronous transcription;
@@ -394,11 +418,12 @@ Version 0.0.0-alpha.1 does not require:
 - coups;
 - permanent voice ownership;
 - permanent retention of contributed audio; or
+- an implemented receipt-claim endpoint, durable-account integration, public claim ledger, or purge-verification worker; or
 - implementation of every future Pledge authorization gate.
 
 Those broader concepts remain part of Pledge’s direction but are outside this bootstrap specification.
 
-## 17. Unresolved parameters
+## 18. Unresolved parameters
 
 The following decisions remain open:
 
@@ -419,12 +444,15 @@ The following decisions remain open:
 - handling of transcription failure;
 - handling of purge failure;
 - precise audit record retained after content purge;
+- exact retention and withdrawal rules for a timely claimed item;
+- durable-account identity requirements and public-claim presentation;
+- purge implementation, verification, and failure handling for unclaimed expired items;
 - whether a contributor can withdraw before expiration;
 - how immediate return behaves while transcription remains pending; and
 - whether the system identifies that a visitor heard their own contributed voice.
 
-## 18. Recovery statement
+## 19. Recovery statement
 
 If implementation context is lost, recover the intended system from this rule:
 
-> Pledge begins mute. It asks a visitor through text to lend a recording that can ask “Who are you?” Pledge validates only the audio envelope before allowing the visitor to proceed. It transcribes and semantically evaluates the recording offline, tolerating humor and nonliteral phrasing. Usable recordings enter a time-bound catalogue. Tracks with unmet minimum-use commitments receive selection priority; otherwise selection is random. Expired audio and transcripts are purged. If no eligible voice has ever existed, Pledge bootstraps. If it loses all voices later, Pledge sulks and asks to borrow another.
+> Pledge begins mute. It asks a visitor through text to lend a recording that can ask “Who are you?” Pledge validates only the audio envelope before allowing the visitor to proceed. It transcribes and semantically evaluates the recording offline, tolerating humor and nonliteral phrasing. Usable recordings enter a time-bound catalogue. Tracks with unmet minimum-use commitments receive selection priority; otherwise selection is random. An unclaimed borrowed item stops being usable at expiration and is aggressively removed. Before expiration, its receipt holder may make a durable authenticated account and publicly claim it; that claim moves it from anonymous borrowed custody to known-account custody. If no eligible voice has ever existed, Pledge bootstraps. If it loses all voices later, Pledge sulks and asks to borrow another.
