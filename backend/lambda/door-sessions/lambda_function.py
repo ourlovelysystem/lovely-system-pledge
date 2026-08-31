@@ -113,13 +113,18 @@ def get_session(event):
         return error_response
     session_id = item["session_id"]["S"]
 
-    return response(200, {
+    session = {
         "session_id": session_id,
         "status": item["status"]["S"],
         "challenge_id": item["challenge_id"]["S"],
         "recording_seconds": int(item["recording_seconds"]["N"]),
         "valid_until": int(item["valid_until"]["N"]),
-    })
+    }
+    if "transcript_text" in item:
+        session["transcript_text"] = item["transcript_text"]["S"]
+    if "transcription_failure_reason" in item:
+        session["transcription_failure_reason"] = item["transcription_failure_reason"]["S"]
+    return response(200, session)
 
 
 def create_upload_url(event):
