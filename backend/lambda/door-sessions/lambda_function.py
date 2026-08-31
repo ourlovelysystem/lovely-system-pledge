@@ -1,5 +1,6 @@
 """Temporary Pledge door sessions. No borrowed-artifact catalog writes occur here."""
 
+import base64
 import hashlib
 import json
 import os
@@ -11,7 +12,9 @@ import boto3
 
 
 dynamodb = boto3.client("dynamodb")
+s3 = boto3.client("s3")
 TABLE_NAME = os.environ["DOOR_SESSIONS_TABLE"]
+TEMPORARY_SESSIONS_BUCKET = os.environ["TEMPORARY_SESSIONS_BUCKET"]
 SESSION_VALID_SECONDS = int(os.environ.get("SESSION_VALID_SECONDS", "43200"))
 SESSION_TTL_SECONDS = int(os.environ.get("SESSION_TTL_SECONDS", "86400"))
 CHALLENGE_ID = "who-are-you-v1"
@@ -36,6 +39,39 @@ def token_hash(token):
 def supplied_token(event):
     headers = {key.lower(): value for key, value in event.get("headers", {}).items()}
     return headers.get("x-pledge-session-token")
+
+
+def request_json(event):
+    body = event.get("body") or "{}"
+    if event.get("isBase64Encoded"):
+        body = base64.b64decode(body).decode("utf-8")
+    try:
+        value = json.loads(body)
+    except json.JSONDecodeError as error:
+        raise ValueError("Request body must be JSON.") from error
+    if not isinstance(value, dict):
+        raise ValueError("Request body must be a JSON object.")
+    return value
+
+
+def authorized_session(event):
+    session_id = event.get("pathParameters", {}).get("session_id")
+    token = supplied_token(event)
+    if not session_id or not token:
+        return None, response(401, {"error": "A session ID and session token are required."})
+    result = dynamodb.get_item(
+        TableName=TABLE_NAME,
+        Key={"session_id": {"S": session_id}},
+        ConsistentRead=True,
+    )
+    item = result.get("Item")
+    if not item or not secrets.compare_digest(
+        item["browser_session_hash"]["S"], token_hash(token)
+    ):
+        return None, response(404, {"error": "Session not found."})
+    if int(time.time()) > int(item["valid_until"]["N"]):
+        return None, response(410, {"error": "Session expired."})
+    return item, None
 
 
 def create_session():
@@ -70,24 +106,10 @@ def create_session():
 
 
 def get_session(event):
-    session_id = event.get("pathParameters", {}).get("session_id")
-    token = supplied_token(event)
-    if not session_id or not token:
-        return response(401, {"error": "A session ID and session token are required."})
-
-    result = dynamodb.get_item(
-        TableName=TABLE_NAME,
-        Key={"session_id": {"S": session_id}},
-        ConsistentRead=True,
-    )
-    item = result.get("Item")
-    if not item or not secrets.compare_digest(
-        item["browser_session_hash"]["S"], token_hash(token)
-    ):
-        return response(404, {"error": "Session not found."})
-
-    if int(time.time()) > int(item["valid_until"]["N"]):
-        return response(410, {"error": "Session expired."})
+    item, error_response = authorized_session(event)
+    if error_response:
+        return error_response
+    session_id = item["session_id"]["S"]
 
     return response(200, {
         "session_id": session_id,
@@ -98,9 +120,60 @@ def get_session(event):
     })
 
 
+def create_upload_url(event):
+    item, error_response = authorized_session(event)
+    if error_response:
+        return error_response
+    try:
+        body = request_json(event)
+    except ValueError as error:
+        return response(400, {"error": str(error)})
+
+    content_type = body.get("content_type")
+    if content_type not in {"audio/webm", "audio/ogg", "audio/mp4"}:
+        return response(400, {"error": "Unsupported recording content type."})
+
+    session_id = item["session_id"]["S"]
+    object_key = f"temporary-sessions/{session_id}/recording"
+    now = int(time.time())
+    dynamodb.update_item(
+        TableName=TABLE_NAME,
+        Key={"session_id": {"S": session_id}},
+        UpdateExpression=(
+            "SET #status = :status, audio_object_key = :key, "
+            "audio_content_type = :content_type, updated_at = :now"
+        ),
+        ExpressionAttributeNames={"#status": "status"},
+        ExpressionAttributeValues={
+            ":status": {"S": "upload_pending"},
+            ":key": {"S": object_key},
+            ":content_type": {"S": content_type},
+            ":now": {"N": str(now)},
+        },
+    )
+    upload_url = s3.generate_presigned_url(
+        "put_object",
+        Params={
+            "Bucket": TEMPORARY_SESSIONS_BUCKET,
+            "Key": object_key,
+            "ContentType": content_type,
+        },
+        ExpiresIn=300,
+        HttpMethod="PUT",
+    )
+    return response(200, {
+        "object_key": object_key,
+        "content_type": content_type,
+        "upload_url": upload_url,
+        "upload_url_expires_in_seconds": 300,
+    })
+
+
 def lambda_handler(event, context):
     method = event.get("requestContext", {}).get("http", {}).get("method")
     if method == "POST":
+        if event.get("pathParameters", {}).get("session_id"):
+            return create_upload_url(event)
         return create_session()
     if method == "GET":
         return get_session(event)
