@@ -9,10 +9,12 @@ import time
 import uuid
 
 import boto3
+from botocore.exceptions import ClientError
 
 
 dynamodb = boto3.client("dynamodb")
 s3 = boto3.client("s3")
+transcribe = boto3.client("transcribe")
 TABLE_NAME = os.environ["DOOR_SESSIONS_TABLE"]
 TEMPORARY_SESSIONS_BUCKET = os.environ["TEMPORARY_SESSIONS_BUCKET"]
 SESSION_VALID_SECONDS = int(os.environ.get("SESSION_VALID_SECONDS", "43200"))
@@ -169,10 +171,62 @@ def create_upload_url(event):
     })
 
 
+def submit_recording(event):
+    item, error_response = authorized_session(event)
+    if error_response:
+        return error_response
+    session_id = item["session_id"]["S"]
+    object_key = item.get("audio_object_key", {}).get("S")
+    content_type = item.get("audio_content_type", {}).get("S")
+    if not object_key or not content_type:
+        return response(409, {"error": "No recording upload is pending for this session."})
+    try:
+        s3.head_object(Bucket=TEMPORARY_SESSIONS_BUCKET, Key=object_key)
+    except ClientError as error:
+        if error.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+            return response(409, {"error": "The recording has not been uploaded."})
+        raise
+
+    media_format = {
+        "audio/webm": "webm",
+        "audio/ogg": "ogg",
+        "audio/mp4": "mp4",
+    }[content_type]
+    job_name = f"pledge-door-{session_id}"
+    transcribe.start_transcription_job(
+        TranscriptionJobName=job_name,
+        LanguageCode="en-US",
+        MediaFormat=media_format,
+        Media={"MediaFileUri": f"s3://{TEMPORARY_SESSIONS_BUCKET}/{object_key}"},
+    )
+    now = int(time.time())
+    dynamodb.update_item(
+        TableName=TABLE_NAME,
+        Key={"session_id": {"S": session_id}},
+        UpdateExpression=(
+            "SET #status = :status, transcription_job_name = :job_name, "
+            "submitted_at = :now, updated_at = :now"
+        ),
+        ExpressionAttributeNames={"#status": "status"},
+        ExpressionAttributeValues={
+            ":status": {"S": "submitted"},
+            ":job_name": {"S": job_name},
+            ":now": {"N": str(now)},
+        },
+    )
+    return response(202, {
+        "session_id": session_id,
+        "status": "submitted",
+        "transcription_job_name": job_name,
+    })
+
+
 def lambda_handler(event, context):
     method = event.get("requestContext", {}).get("http", {}).get("method")
     if method == "POST":
         if event.get("pathParameters", {}).get("session_id"):
+            if event.get("rawPath", "").endswith("/submit"):
+                return submit_recording(event)
             return create_upload_url(event)
         return create_session()
     if method == "GET":
