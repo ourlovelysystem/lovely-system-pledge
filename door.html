@@ -94,7 +94,8 @@
         const uploaded = await fetch(upload.upload_url, { method:"PUT", headers:{ "content-type":contentType }, body:responseBlob });
         if (!uploaded.ok) throw new Error(`Audio upload failed (${uploaded.status}).`);
         await api(`/door-sessions/${session.session_id}/submit`, { method:"POST", headers:tokenHeaders() });
-        setStatus("Response submitted."); result.textContent = "Pledge received the response. Transcription continues after you leave this page."; result.hidden = false;
+        sessionStorage.setItem("pledge-door-session", JSON.stringify({ session_id:session.session_id, browser_session_token:session.browser_session_token }));
+        window.location.assign("./recording.html");
       } catch (error) { setStatus(error.message); submit.disabled = false; }
     });
   </script>
