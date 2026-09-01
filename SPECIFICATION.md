@@ -1,458 +1,200 @@
-# Pledge Bootstrap Voice Solicitation Specification
+# Pledge Specification
 
-**Version:** 0.0.0-alpha.2  
-**Status:** Accepted policy direction; claim and purge enforcement not yet implemented  
-**Date:** 2026-08-31  
+**Version:** 0.1.0-alpha  
+**Date:** 2026-09-01  
+**Status:** Current implemented behavior and declared boundaries  
 **Project:** `pledge.ourlovelysystem.org`
 
 ## 1. Purpose
 
-Pledge is intended to solicit, collect, evaluate, and temporarily use contributed human voice recordings.
+Pledge is a voice-gated system that speaks with temporarily borrowed voices.
 
-A new Pledge deployment begins with a bootstrapping problem: it is supposed to speak an auditory challenge, but it has no voice of its own. The first usable voice must therefore be solicited through text. Once a usable recording exists, Pledge may use its voice catalogue to speak to later visitors.
+A person may lend a recording that performs an auditory challenge. Pledge transcribes and evaluates that recording asynchronously before admitting it to a time-bounded catalogue of challenge voices. A visitor may then hear a borrowed challenge, make a short spoken response, and receive a private receipt showing what Pledge recorded and transcribed.
 
-The first implementation is deliberately narrow. It establishes:
+Pledge does not claim speaker biometrics, civil identity verification, or present-day authorization of a user account. It records a bounded voice interaction and makes its processing visible to the submitting browser.
 
-- the no-voice bootstrap state;
-- a reusable voice-solicitation utility;
-- immediate audio-envelope validation;
-- asynchronous transcription and semantic validation;
-- time-bounded permission to use a recording;
-- a catalogue of eligible auditory challenges;
-- priority handling for minimum-use commitments;
-- normal and sulk behavior; and
-- deletion of expired audio and associated transcripts.
+## 2. Governing distinctions
 
-The broader Pledge system may later use the same voice-solicitation utility in other contexts.
+Pledge maintains two independent flows. They must not be conflated.
 
-## 2. Governing distinction
+| Flow | Purpose | Current result |
+|---|---|---|
+| Borrowed electronic valuable | Supply a challenge voice to Pledge | A usable, unexpired recording may be selected and played as a challenge. |
+| Door session | Let a visitor hear a challenge and leave a response | A private temporary record is created, transcribed, and displayed to that browser. |
 
-Pledge does not wait for transcription before allowing the contributor to proceed.
+A catalogue voice is evaluated for whether it performs the requested function: asking the listener to identify themselves. A door response is currently transcribed and retained in its private temporary session. It is **not** presently semantically evaluated for admission, identity, or `isNotMute=true`.
 
-Two validation stages exist.
+## 3. Borrowed challenge voices
 
-### 2.1 Synchronous envelope validation
+### 3.1 Requested function
 
-Pledge validates that an audio submission exists and is structurally usable. It does not validate what the speaker said.
+The initial challenge function is:
 
-An envelope is valid when, at minimum:
+> Ask the listener to identify themselves.
 
-- an audio object was received;
-- the upload completed;
-- the object is non-empty;
-- the media type is supported;
-- the object can be decoded;
-- its duration falls within configured limits; and
-- it contains a minimally usable audio signal.
-
-When the envelope is valid:
-
-1. Pledge creates the durable submission record.
-2. Pledge schedules asynchronous content processing.
-3. Pledge allows the contributor to pass through immediately.
-4. Pledge sends the contributor to the **Come Back Soon** page.
-
-Envelope acceptance is not catalogue acceptance.
-
-### 2.2 Asynchronous content validation
-
-Offline processing evaluates the recording after the contributor has left the submission workflow.
-
-Pledge knows:
-
-- the text solicitation presented when the audio was collected;
-- the requested auditory function;
-- the submitted audio;
-- the applicable permission period; and
-- the submission record to which processing results belong.
-
-The asynchronous process:
-
-1. transcribes the audio;
-2. preserves transcription-confidence information when available;
-3. compares the transcript to the requested function;
-4. calculates a semantic match score;
-5. decides whether the track is usable, unusable, or uncertain;
-6. attaches the transcript, score, and decision to the durable submission record; and
-7. adds a usable, unexpired track to the appropriate catalogue.
-
-The contributor does not wait for any of these steps.
-
-## 3. Bootstrap state
-
-A new deployment has no eligible auditory challenge recordings.
-
-The landing page communicates:
-
-> Pledge has no voice of its own. Can Pledge borrow your voice?
-
-If the visitor agrees, Pledge invokes the reusable voice-solicitation utility in the bootstrap context.
-
-The bootstrap solicitation asks the visitor to record a voice track that performs the auditory function:
-
-> Ask the listener: “Who are you?”
-
-After Pledge accepts the audio envelope, the visitor is directed to the **Come Back Soon** page.
-
-The page contains a link back to the landing page.
-
-Bootstrap mode ends when the catalogue contains at least one usable and unexpired `who_are_you` voice track.
-
-## 4. Illustrative bootstrap sequence
-
-1. Will Daly visits `pledge.ourlovelysystem.org`.
-2. Pledge has no eligible voice.
-3. Pledge asks in text whether it may borrow Will’s voice.
-4. Will agrees.
-5. Pledge asks Will to record an auditory “Who are you?” challenge.
-6. Will records the requested track.
-7. Pledge validates the audio envelope only.
-8. The envelope passes.
-9. Pledge creates a durable submission record.
-10. Pledge queues offline transcription and content validation.
-11. Pledge sends Will to the Come Back Soon page.
-12. Will follows its link to the landing page.
-13. If Will’s recording has completed processing and is usable, Pledge now has a voice.
-14. Pledge challenges Will using an eligible catalogue track, potentially his own:
+The reference phrase is:
 
 > Who are you?
 
-If processing has not finished, or if no submitted track has become usable, Pledge remains in its no-eligible-voice behavior.
+Pledge accepts semantic variation rather than exact repetition. Humor, awkward grammar, or a nonliteral phrasing may still perform the function.
 
-## 5. Reusable voice-solicitation utility
+### 3.2 Asynchronous catalogue processing
 
-Voice solicitation is a system utility for varying contexts.
+A submitted candidate recording is transcribed by Amazon Transcribe. Pledge records transcription measures when available and uses Amazon Bedrock Nova Micro to make a separate semantic-function judgment.
 
-Each invocation provides a solicitation contract containing at least:
+The stored measures are distinct:
 
-| Field | Meaning |
-|---|---|
-| `context` | Why the voice is being requested |
-| `display_text` | Text shown to the contributor |
-| `requested_function` | What the resulting track must accomplish |
-| `reference_text` | A representative phrase, when one exists |
-| `catalogue` | Eligible destination catalogue |
-| `duration_options` | Permitted borrowing periods |
-| `minimum_use_options` | Permitted minimum-use commitments |
-| `audio_constraints` | Media, size, duration, and signal rules |
-| `validation_policy_version` | Content-validation rules applied later |
-| `retention_policy_version` | Retention rules governing the submission |
+- **Transcription confidence**: how confidently Transcribe recognized words.
+- **Semantic match score**: how well the transcript performs the requested function.
+- **Content decision**: `usable`, `review_required`, or `unusable`.
 
-The bootstrap context uses:
+Transcription confidence is not semantic correctness. A poor transcription-confidence result is not automatically a bad challenge voice.
 
-- context: `bootstrap`;
-- requested function: ask the listener who they are;
-- reference text: `Who are you?`; and
-- catalogue: `who_are_you`.
+### 3.3 Catalogue eligibility and selection
 
-Later contexts may request other auditory functions without requiring a new recording subsystem.
+A challenge is eligible only when it is marked `catalog_eligible`, is in borrowed status, is unexpired, and has usable object metadata.
 
-## 6. Semantic acceptance
+When a door session begins, Pledge selects an eligible voice. It prioritizes eligible recordings whose `use_count` remains below `minimum_uses`; otherwise it selects randomly from the eligible set.
 
-Pledge is not hostile to humor, grammatical variation, or stylistic interpretation.
+Challenge playback is acknowledged separately. That acknowledgement increments the selected voice's use count once.
 
-The validator does not require exact repetition of the reference text. It asks:
+## 4. Door-session experience
 
-> Is this recording recognizably performing the requested auditory function?
+### 4.1 One-button interaction
 
-For the requested function “ask the listener who they are,” all of the following should be capable of acceptance:
+The public door page is `/door.html`.
 
-| Example transcript | Intended disposition |
-|---|---|
-| “Who are you?” | Accept |
-| “Who are you, dickwad?” | Accept |
-| “Who you are?” | Accept |
-| “Who you?” | Accept |
-| “Sing me your name.” | Accept |
-| Speech unrelated to the listener’s identity | Reject or review |
+The intended current interaction is one press of **Step Up**:
 
-Added humor is not a failure merely because it was not present in the reference text.
+1. Pledge creates a private door session and selects a borrowed challenge.
+2. Pledge plays that challenge without exposing a browser audio slider.
+3. When the challenge ends, Pledge emits an audible rising double tone and begins recording.
+4. Pledge records for the session's configured limit, currently 15 seconds.
+5. Pledge stops recording and emits an audible falling double tone.
+6. Pledge uploads and submits the response automatically.
+7. Pledge redirects to the private recording receipt.
 
-A track fails when it does not adequately perform the requested function.
+There are no manual repeat, record, stop, submit, or response-playback controls in the current door flow.
 
-## 7. Scores and decisions
+A browser that denies microphone permission receives an error and may try again.
 
-Pledge should preserve two different measures when the transcription provider makes them available.
+### 4.2 Private recording receipt
 
-### 7.1 Transcription confidence
+The receipt page is `/recording.html`.
 
-Transcription confidence estimates how confidently the speech-recognition system identified the spoken words.
+After submission, the browser stores only an opaque temporary session handle in `sessionStorage`: a session identifier and a random browser-session token. It does not store the transcript, audio, or authoritative status.
 
-It does not measure whether those words serve Pledge’s requested function.
+The receipt retrieves the session through the API using that token. It displays:
 
-### 7.2 Semantic match score
+- receipt/session identifier;
+- challenge identifier;
+- current status;
+- recorded media type;
+- recording limit;
+- created, submitted, transcribed, and validity times;
+- transcription text when complete; or
+- transcription failure reason when applicable.
 
-The semantic match score estimates how closely the transcript performs the requested function.
+The receipt is private to that browser session. Its token is not placed in the URL, and there is no public recording-record route.
 
-This is a system score, not a calibrated probability that the decision is objectively correct.
+The receipt does not poll. A person may reload or return to it to obtain current server state.
 
-Illustrative output:
+## 5. Door-session processing
 
-```json
-{
-  "requested_function": "ask the listener who they are",
-  "reference_text": "Who are you?",
-  "transcript": "Who are you, dickwad?",
-  "transcription_confidence": 0.91,
-  "semantic_match_score": 0.94,
-  "decision": "usable"
-}
-```
+### 5.1 Session creation and upload
 
-Provisional score bands may begin as:
+A new door session has:
 
-| Semantic match | Provisional treatment |
-|---:|---|
-| 0.80–1.00 | Automatically usable |
-| 0.60–0.79 | Candidate for acceptance or review |
-| 0.35–0.59 | Review or hold |
-| 0.00–0.34 | Automatically unusable |
+- a random UUID session identifier;
+- a hashed browser-session token stored server-side;
+- a selected challenge identifier and object reference;
+- a 15-second recording limit;
+- a 12-hour access-validity window; and
+- a 24-hour DynamoDB TTL window.
 
-These thresholds are not locked. They must be calibrated against an actual test collection containing literal, humorous, rearranged, abbreviated, semantically equivalent, noisy, and unrelated recordings.
+The browser requests a presigned S3 PUT URL for a supported response type: `audio/webm`, `audio/ogg`, or `audio/mp4`. The bucket permits this PUT only from `https://pledge.ourlovelysystem.org` with `Content-Type`.
 
-A low transcription-confidence result may still represent a good recording. Uncertainty should remain inspectable rather than being silently converted into rejection.
+### 5.2 Submission and transcription
 
-## 8. Submission and catalogue states
-
-Suggested submission states:
+When the S3 object exists, submission starts an Amazon Transcribe job named:
 
 ```text
-uploading
-envelope_rejected
-envelope_accepted
-transcription_pending
-transcribed
-validation_pending
-usable
-unusable
-review_required
-expired
-withdrawn
-purged
+pledge-door-<session UUID>
 ```
 
-A track is eligible for selection only when:
+The session moves to `submitted`. Amazon Transcribe completion emits an EventBridge event. The rule `lovely-system-pledge-door-session-transcription-complete` invokes `lovely-system-pledge-door-session-complete`.
 
-- its envelope was accepted;
-- asynchronous processing completed;
-- its decision is `usable`;
-- its borrowing permission is active;
-- it has not expired;
-- it has not been withdrawn;
-- it has not been purged; and
-- it belongs to the requested catalogue.
-
-## 9. Normal voice state
-
-When one or more eligible `who_are_you` recordings exist, Pledge is no longer in bootstrap mode.
-
-At authentication time, Pledge selects an eligible auditory challenge from the catalogue and plays it to the visitor.
-
-Ordinary selection is random, subject to unmet minimum-use commitments.
-
-Pledge therefore speaks with borrowed voices rather than a permanent voice of its own.
-
-## 10. Sulk mode
-
-If Pledge once had an eligible voice but no eligible voice remains, it enters **sulk mode**.
-
-Sulk mode presents a textual sob story:
-
-> Once upon a time I had a voice. Now I have none. May I borrow yours?
-
-Acceptance invokes the same reusable voice-solicitation utility.
-
-Bootstrap and sulk mode share the same technical no-eligible-voice condition. They differ in presentation and system history:
-
-- bootstrap: Pledge has not yet acquired its first usable voice;
-- sulk: Pledge previously had a voice and lost eligibility to use it.
-
-## 11. Time-bound borrowing
-
-Every contributed track has a defined authorization period.
-
-The test system must support borrowing periods measured in minutes so expiration and purging can be exercised efficiently.
-
-After testing and validation, ordinary options are expected to move toward periods measured in days or longer.
-
-When the borrowing period expires:
-
-1. the track immediately becomes ineligible for playback;
-2. an **unclaimed** track is queued for aggressive removal;
-3. its audio, transcript, and derived content are purged;
-4. the catalogue is recalculated; and
-5. no later claim can restore the removed content.
-
-The system must stop using an unclaimed item at expiration even if physical deletion is still in progress. Storage lifecycle timing is not permission to continue playback, transcription, or other processing.
-
-An audit record may preserve that a submission, claim, expiration, or purge event occurred without preserving the expired voice or transcript. The exact non-content audit fields remain to be defined.
-
-The authorization clock and its start event must be explicit. Candidate start events include envelope acceptance, catalogue acceptance, or first use. This version does not select among them.
-
-## 12. Receipt claim before expiration
-
-An anonymous borrowed electronic valuable may be claimed only **before** its `expires_at` time.
-
-To claim it, the receipt holder must:
-
-1. create or use a durable authenticated Our Lovely System account;
-2. present the receipt for the specific electronic valuable; and
-3. complete the claim while the borrowed item is still unexpired.
-
-The receipt is possession evidence, not proof that the claimant is the speaker, the original lender, or the only person with an interest in the recording. Pledge does not conceal that limitation. It makes the claimant known in the act of claiming.
-
-A completed claim moves the item out of anonymous borrowed custody and into known-account custody. It prevents the default expiration purge for that item. The exact durable retention, withdrawal, and account-management rules for claimed items are deferred; they must be defined before the claim feature is exposed.
-
-The claim is a public accountability event. The public record must identify the known claimant, the item claimed, and the claim time. It must preserve the item's prior anonymous-lending status and applicable terms without publishing the secret receipt. Where the original lending record includes a displayable self-identification, the record may show that asserted identity alongside the claimant's identity. Pledge will not turn a contested claim into invisible private custody.
-
-After `expires_at`, the borrowed item cannot be claimed. Its removal is the default and is intentionally enforced aggressively.
-
-## 13. Minimum-use commitment
-
-A contribution may carry an **at least X uses** parameter.
-
-The parameter is intended to make a newly lent voice likely to be heard promptly, including by the contributor who returns to Pledge soon after submitting it.
-
-Tracks with unmet minimum-use commitments move ahead of the ordinary random-selection pool.
-
-Selection behavior:
-
-1. discard ineligible tracks from consideration;
-2. identify eligible tracks where `completed_uses < minimum_uses`;
-3. select from that priority group;
-4. if no eligible priority tracks exist, select randomly from the ordinary eligible catalogue; and
-5. increment `completed_uses` after successful playback.
-
-Time-bound permission remains controlling. A minimum-use commitment must not silently extend permission after expiration. If the time period expires first, the track becomes ineligible and is purged even if Pledge failed to satisfy X uses.
-
-The interface must not describe “at least X” as guaranteed unless the system actually guarantees it within the authorized period.
-
-## 14. Durable records
-
-A minimal submission record should preserve:
+On successful completion, that Lambda retrieves the transcript and updates the private session to:
 
 ```text
-submission_id
-context
-solicitation_text
-requested_function
-reference_text
-catalogue
-audio_object_reference
-audio_media_type
-audio_duration
-audio_hash
-envelope_accepted_at
-borrowing_starts_at
-expires_at
-minimum_uses
-completed_uses
-transcription_status
-transcript
-transcription_confidence
-semantic_match_score
-catalogue_decision
-validation_policy_version
-retention_policy_version
-withdrawn_at
-purged_at
-claimed_at
-claimed_by_account_id
-claim_public_record_id
-created_at
-updated_at
+status = complete
+transcript_text = <recognized text>
+transcribed_at = <epoch seconds>
 ```
 
-This list expresses recoverable intent, not a locked physical schema.
+On a transcription failure, it updates the private session to `failed` and preserves the failure reason.
 
-The system should distinguish temporary content from durable event metadata so that audio and transcripts can be purged without erasing the fact that governed processing occurred.
+Observed recent tests completed the submit-to-transcript path in approximately 8–9 seconds. That is an observed result, not a service guarantee.
 
-## 15. State derivation
+## 6. API boundary
 
-The landing behavior is derived from current inventory and history.
+The HTTP API is at `https://api.pledge.ourlovelysystem.org`.
 
-| Condition | Mode |
+| Method and route | Purpose |
 |---|---|
-| No eligible voice has ever existed | Bootstrap |
-| At least one eligible voice exists | Normal voice |
-| A voice existed previously but none is currently eligible | Sulk |
+| `POST /door-sessions` | Create a private session and return a selected challenge URL. |
+| `POST /door-sessions/{session_id}/challenge-played` | Acknowledge challenge playback and increment use count once. |
+| `POST /door-sessions/{session_id}/upload-url` | Return a private presigned response-upload URL. |
+| `POST /door-sessions/{session_id}/submit` | Verify upload and start Transcribe. |
+| `GET /door-sessions/{session_id}` | Return the authorized browser's session metadata and transcript/failure when available. |
 
-Eligibility is computed from durable state. It should not depend on a manually maintained “has voice” flag that can drift away from the catalogue.
+All session-specific routes require the browser-session token in `x-pledge-session-token`. The server stores its hash, not the token itself.
 
-## 16. Initial functional boundary
+## 7. State model
 
-The first build should include:
+### 7.1 Door-session states
 
-- the Pledge landing page;
-- bootstrap/no-voice presentation;
-- consent to lend a voice;
-- the reusable solicitation interface;
-- browser audio recording;
-- synchronous envelope validation;
-- immediate navigation to Come Back Soon after envelope acceptance;
-- the Come Back Soon return link;
-- durable submission metadata;
-- durable temporary audio storage;
-- asynchronous transcription;
-- semantic comparison against the known requested function;
-- inspectable scores and decisions;
-- automatic catalogue eligibility;
-- random challenge selection;
-- minimum-use priority selection;
-- test-scale expiration in minutes;
-- automatic purge of expired audio and transcripts; and
-- sulk-mode presentation.
+```text
+ready
+upload_pending
+submitted
+complete
+failed
+```
 
-## 17. Explicit non-requirements for this version
+`complete` means the private temporary response has been transcribed and written to the door-session record. It does not mean the visitor has been authenticated, identified, admitted to a user zone, or granted `isNotMute=true`.
 
-Version 0.0.0-alpha.2 does not require:
+### 7.2 Catalogue state
 
-- exact-phrase matching;
-- synchronous transcription;
-- waiting for catalogue acceptance before admitting the contributor;
-- speaker biometric identification;
-- proof of civil identity;
-- trustees;
-- agents;
-- seniority;
-- coups;
-- permanent voice ownership;
-- permanent retention of contributed audio; or
-- an implemented receipt-claim endpoint, durable-account integration, public claim ledger, or purge-verification worker; or
-- implementation of every future Pledge authorization gate.
+The catalogue is distinct from door sessions. Challenge candidates record transcription, semantic validation, eligibility, expiration, use counts, and borrowing status. Pledge uses only currently eligible borrowed items as audible challenges.
 
-Those broader concepts remain part of Pledge’s direction but are outside this bootstrap specification.
+## 8. Privacy, retention, and borrowing direction
 
-## 18. Unresolved parameters
+Borrowed voices are not permanent donations. Pledge borrows them under bounded terms.
 
-The following decisions remain open:
+The system maintains temporary response objects separately from the catalogue. Door-session completion never writes a visitor response to the challenge catalogue.
 
-- exact landing-page copy and controls;
-- whether declining the solicitation has a dedicated path;
-- supported audio formats;
-- minimum and maximum recording duration;
-- signal-quality threshold;
-- authorization-clock start event;
-- minute-scale testing choices;
-- later production duration choices;
-- permitted values for minimum uses;
-- priority selection within multiple unmet commitments;
-- whether catalogue acceptance can occur without human review;
-- semantic model or algorithm;
-- initial score thresholds;
-- review workflow;
-- handling of transcription failure;
-- handling of purge failure;
-- precise audit record retained after content purge;
-- exact retention and withdrawal rules for a timely claimed item;
-- durable-account identity requirements and public-claim presentation;
-- purge implementation, verification, and failure handling for unclaimed expired items;
-- whether a contributor can withdraw before expiration;
-- how immediate return behaves while transcription remains pending; and
-- whether the system identifies that a visitor heard their own contributed voice.
+A receipt is possession evidence for an electronic valuable; it is not proof that a claimant is the speaker or sole interested party. The claimed-item custody and public-accountability process remains a declared direction, not a currently exposed feature.
 
-## 19. Recovery statement
+Expiration must make borrowed catalogue audio ineligible immediately. Aggressive deletion of expired audio, transcript, and derived content is required by Pledge's intended policy, but automated purge/verification is not yet implemented.
 
-If implementation context is lost, recover the intended system from this rule:
+## 9. Explicit current limits
 
-> Pledge begins mute. It asks a visitor through text to lend a recording that can ask “Who are you?” Pledge validates only the audio envelope before allowing the visitor to proceed. It transcribes and semantically evaluates the recording offline, tolerating humor and nonliteral phrasing. Usable recordings enter a time-bound catalogue. Tracks with unmet minimum-use commitments receive selection priority; otherwise selection is random. An unclaimed borrowed item stops being usable at expiration and is aggressively removed. Before expiration, its receipt holder may make a durable authenticated account and publicly claim it; that claim moves it from anonymous borrowed custody to known-account custody. If no eligible voice has ever existed, Pledge bootstraps. If it loses all voices later, Pledge sulks and asks to borrow another.
+Pledge does not yet implement:
+
+- granting `isNotMute=true`;
+- semantic evaluation of door responses for authorization;
+- speaker biometric or civil identity verification;
+- authenticated account integration;
+- trustee, agent, or seniority roles;
+- receipt-claim endpoint or public claim ledger;
+- withdrawal interface;
+- automated expiration purge and purge verification;
+- production retention/withdrawal rules for claimed material; or
+- a public recording browser.
+
+The current door interface is functional but visually provisional. Its one-button interaction and private receipt are the current tested interface, not a final visual design.
+
+## 10. Recovery statement
+
+> Pledge speaks with eligible borrowed voices. A visitor presses Step Up, hears a question, receives an audible recording boundary, and leaves one short response. Pledge submits it, transcribes it asynchronously, and gives the submitting browser a private receipt. A completed receipt proves transcription persistence, not identity, authentication, or admission.
