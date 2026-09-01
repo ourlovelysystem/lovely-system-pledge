@@ -9,94 +9,94 @@
     * { box-sizing:border-box } body { margin:0; min-height:100svh; display:grid; place-items:center; padding:1.25rem; background:#080a09 }
     main { width:min(48rem,100%); border:1px solid #59625c; background:#111511; box-shadow:0 24px 80px rgba(0,0,0,.45) }
     header, section { padding:clamp(1.25rem,4vw,2.5rem) } header { border-bottom:1px solid #59625c; background:#191e1a }
-    h1 { margin:0; font:400 clamp(3rem,10vw,6rem)/.9 Georgia,serif; letter-spacing:-.05em } p { color:#b9c0bb; line-height:1.55 } .status { min-height:1.5rem; color:#d7ff2f; font-weight:800 }
-    audio { width:100%; margin:.75rem 0 1rem } .actions { display:flex; flex-wrap:wrap; gap:.65rem; margin-top:1rem }
-    button { min-height:3rem; border:1px solid #59625c; border-radius:.2rem; padding:.6rem 1rem; background:#191e1a; color:#f7f3e9; font:800 .9rem inherit; cursor:pointer }
-    button.primary { border-color:#d7ff2f; background:#d7ff2f; color:#10110d } button:disabled { cursor:not-allowed; opacity:.38 }
-    .response { border-top:1px solid #59625c } .receipt { overflow-wrap:anywhere; color:#d7ff2f } [hidden] { display:none!important }
+    h1 { margin:0; font:400 clamp(3rem,10vw,6rem)/.9 Georgia,serif; letter-spacing:-.05em } p { color:#b9c0bb; line-height:1.55 }
+    .status { min-height:1.5rem; color:#d7ff2f; font-weight:800 } button { min-height:3.5rem; border:1px solid #d7ff2f; border-radius:.2rem; padding:.75rem 1.25rem; background:#d7ff2f; color:#10110d; font:800 1rem inherit; cursor:pointer } button:disabled { cursor:wait; opacity:.55 }
   </style>
 </head>
 <body>
   <main>
     <header><h1>Step Up.</h1><p>Listen. Answer. Pledge will keep the response long enough to hear what happened.</p></header>
     <section>
-      <div id="status" class="status" role="status" aria-live="polite">Preparing a challenge.</div>
-      <div id="start-actions" class="actions"><button id="start" class="primary" type="button">Challenge</button></div>
-      <div id="challenge" hidden>
-        <p>The challenge is spoken with a borrowed voice.</p>
-        <audio id="challenge-audio" controls preload="metadata"></audio>
-        <div class="actions"><button id="repeat" type="button">Repeat</button></div>
-      </div>
-    </section>
-    <section id="response" class="response" hidden>
-      <h2>Response</h2>
-      <p>After listening, record your answer. A submitted response is transcribed asynchronously.</p>
-      <audio id="response-audio" controls preload="metadata"></audio>
-      <div class="actions">
-        <button id="record" class="primary" type="button" disabled>Record</button>
-        <button id="stop" type="button" disabled>Stop</button>
-        <button id="submit" type="button" disabled>Submit response</button>
-      </div>
-      <p id="result" class="receipt" hidden></p>
+      <p id="status" class="status" role="status" aria-live="polite">Press Step Up to hear the question.</p>
+      <button id="step-up" type="button">Step Up</button>
     </section>
   </main>
   <script>
     const API = "https://api.pledge.ourlovelysystem.org";
-    const status = document.querySelector("#status"), start = document.querySelector("#start"), challenge = document.querySelector("#challenge"), challengeAudio = document.querySelector("#challenge-audio"), repeat = document.querySelector("#repeat"), response = document.querySelector("#response"), responseAudio = document.querySelector("#response-audio"), record = document.querySelector("#record"), stop = document.querySelector("#stop"), submit = document.querySelector("#submit"), result = document.querySelector("#result");
-    let session, recorder, stream, chunks = [], responseBlob, responseUrl;
+    const button = document.querySelector("#step-up");
+    const status = document.querySelector("#status");
     const supported = ["audio/webm;codecs=opus", "audio/mp4;codecs=mp4a.40.2", "audio/ogg;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
     const mimeType = () => supported.find((type) => MediaRecorder.isTypeSupported(type));
     const setStatus = (text) => status.textContent = text;
-    const tokenHeaders = (extra = {}) => ({ "x-pledge-session-token": session.browser_session_token, ...extra });
+    let session, recorder, stream, chunks, audioContext;
+
     async function api(path, options = {}) {
       const response = await fetch(`${API}${path}`, options);
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || `Request failed (${response.status}).`);
       return body;
     }
-    start.addEventListener("click", async () => {
-      start.disabled = true; setStatus("Selecting a borrowed challenge.");
+
+    const tokenHeaders = (extra = {}) => ({ "x-pledge-session-token": session.browser_session_token, ...extra });
+
+    function beep() {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.frequency.value = 880;
+      gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.12);
+      oscillator.connect(gain).connect(audioContext.destination);
+      oscillator.start(); oscillator.stop(audioContext.currentTime + 0.12);
+    }
+
+    async function submit() {
+      const responseBlob = new Blob(chunks, { type:recorder.mimeType });
+      const contentType = responseBlob.type.split(";", 1)[0];
+      setStatus("Sending your response.");
+      const upload = await api(`/door-sessions/${session.session_id}/upload-url`, { method:"POST", headers:tokenHeaders({ "content-type":"application/json" }), body:JSON.stringify({ content_type:contentType }) });
+      const uploaded = await fetch(upload.upload_url, { method:"PUT", headers:{ "content-type":contentType }, body:responseBlob });
+      if (!uploaded.ok) throw new Error(`Audio upload failed (${uploaded.status}).`);
+      await api(`/door-sessions/${session.session_id}/submit`, { method:"POST", headers:tokenHeaders() });
+      sessionStorage.setItem("pledge-door-session", JSON.stringify({ session_id:session.session_id, browser_session_token:session.browser_session_token }));
+      window.location.assign("./recording.html");
+    }
+
+    async function recordResponse() {
+      const type = mimeType();
+      if (!type) throw new Error("This browser has no supported recording format.");
+      stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      chunks = [];
+      recorder = new MediaRecorder(stream, { mimeType:type });
+      recorder.addEventListener("dataavailable", (event) => { if (event.data.size) chunks.push(event.data); });
+      recorder.addEventListener("stop", async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        try { await submit(); } catch (error) { setStatus(error.message); button.disabled = false; }
+      }, { once:true });
+      beep();
+      recorder.start();
+      setStatus(`Recording your answer for ${session.recording_seconds} seconds.`);
+      window.setTimeout(() => { recorder.stop(); beep(); }, session.recording_seconds * 1000);
+    }
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
       try {
+        audioContext = new AudioContext();
+        await audioContext.resume();
+        setStatus("Preparing a borrowed question.");
         session = await api("/door-sessions", { method:"POST" });
-        challengeAudio.src = session.challenge_audio_url;
-        challenge.hidden = false; setStatus("Press play and listen to the challenge.");
-      } catch (error) { setStatus(error.message); start.disabled = false; }
-    });
-    repeat.addEventListener("click", () => { challengeAudio.currentTime = 0; challengeAudio.play(); });
-    challengeAudio.addEventListener("ended", async () => {
-      if (response.hidden) {
-        response.hidden = false; record.disabled = false; setStatus("Challenge heard. Record your response.");
-        try { await api(`/door-sessions/${session.session_id}/challenge-played`, { method:"POST", headers:tokenHeaders() }); } catch (_) { /* Playback is still usable if acknowledgement is temporarily unavailable. */ }
+        const challenge = new Audio(session.challenge_audio_url);
+        challenge.addEventListener("ended", async () => {
+          try {
+            await api(`/door-sessions/${session.session_id}/challenge-played`, { method:"POST", headers:tokenHeaders() });
+            await recordResponse();
+          } catch (error) { setStatus(error.name === "NotAllowedError" ? "Microphone permission was not granted." : error.message); button.disabled = false; }
+        }, { once:true });
+        setStatus("Listen.");
+        await challenge.play();
+      } catch (error) {
+        setStatus(error.message); button.disabled = false;
       }
-    });
-    record.addEventListener("click", async () => {
-      try {
-        const type = mimeType(); if (!type) throw new Error("This browser has no supported recording format.");
-        stream = await navigator.mediaDevices.getUserMedia({ audio:true }); chunks = [];
-        recorder = new MediaRecorder(stream, { mimeType:type });
-        recorder.addEventListener("dataavailable", (event) => { if (event.data.size) chunks.push(event.data); });
-        recorder.addEventListener("stop", () => {
-          stream.getTracks().forEach((track) => track.stop());
-          responseBlob = new Blob(chunks, { type:recorder.mimeType });
-          if (responseUrl) URL.revokeObjectURL(responseUrl); responseUrl = URL.createObjectURL(responseBlob);
-          responseAudio.src = responseUrl; submit.disabled = false; record.disabled = false; stop.disabled = true;
-          setStatus("Response recorded. Listen or submit.");
-        });
-        recorder.start(); record.disabled = true; stop.disabled = false; submit.disabled = true; setStatus("Recording.");
-      } catch (error) { setStatus(error.name === "NotAllowedError" ? "Microphone permission was not granted." : error.message); }
-    });
-    stop.addEventListener("click", () => { if (recorder?.state === "recording") recorder.stop(); });
-    submit.addEventListener("click", async () => {
-      submit.disabled = true; setStatus("Uploading response.");
-      try {
-        const contentType = responseBlob.type.split(";", 1)[0];
-        const upload = await api(`/door-sessions/${session.session_id}/upload-url`, { method:"POST", headers:tokenHeaders({ "content-type":"application/json" }), body:JSON.stringify({ content_type:contentType }) });
-        const uploaded = await fetch(upload.upload_url, { method:"PUT", headers:{ "content-type":contentType }, body:responseBlob });
-        if (!uploaded.ok) throw new Error(`Audio upload failed (${uploaded.status}).`);
-        await api(`/door-sessions/${session.session_id}/submit`, { method:"POST", headers:tokenHeaders() });
-        sessionStorage.setItem("pledge-door-session", JSON.stringify({ session_id:session.session_id, browser_session_token:session.browser_session_token }));
-        window.location.assign("./recording.html");
-      } catch (error) { setStatus(error.message); submit.disabled = false; }
     });
   </script>
 </body>
