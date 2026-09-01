@@ -39,14 +39,18 @@
 
     const tokenHeaders = (extra = {}) => ({ "x-pledge-session-token": session.browser_session_token, ...extra });
 
-    function beep() {
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      oscillator.frequency.value = 880;
-      gain.gain.setValueAtTime(0.08, audioContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.12);
-      oscillator.connect(gain).connect(audioContext.destination);
-      oscillator.start(); oscillator.stop(audioContext.currentTime + 0.12);
+    function beep(kind) {
+      const frequencies = kind === "start" ? [880, 1175] : [660, 440];
+      frequencies.forEach((frequency, index) => {
+        const startsAt = audioContext.currentTime + index * 0.2;
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.frequency.value = frequency;
+        gain.gain.setValueAtTime(0.24, startsAt);
+        gain.gain.exponentialRampToValueAtTime(0.001, startsAt + 0.16);
+        oscillator.connect(gain).connect(audioContext.destination);
+        oscillator.start(startsAt); oscillator.stop(startsAt + 0.16);
+      });
     }
 
     async function submit() {
@@ -72,10 +76,10 @@
         stream.getTracks().forEach((track) => track.stop());
         try { await submit(); } catch (error) { setStatus(error.message); button.disabled = false; }
       }, { once:true });
-      beep();
+      beep("start");
       recorder.start();
       setStatus(`Recording your answer for ${session.recording_seconds} seconds.`);
-      window.setTimeout(() => { recorder.stop(); beep(); }, session.recording_seconds * 1000);
+      window.setTimeout(() => { recorder.stop(); beep("end"); }, session.recording_seconds * 1000);
     }
 
     button.addEventListener("click", async () => {
