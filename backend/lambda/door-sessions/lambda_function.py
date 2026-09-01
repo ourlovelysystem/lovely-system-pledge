@@ -202,12 +202,20 @@ def get_session(event):
         "status": item["status"]["S"],
         "challenge_id": item["challenge_id"]["S"],
         "recording_seconds": int(item["recording_seconds"]["N"]),
+        "created_at": int(item["created_at"]["N"]),
         "valid_until": int(item["valid_until"]["N"]),
     }
-    if "transcript_text" in item:
-        session["transcript_text"] = item["transcript_text"]["S"]
-    if "transcription_failure_reason" in item:
-        session["transcription_failure_reason"] = item["transcription_failure_reason"]["S"]
+    for name in (
+        "audio_content_type",
+        "submitted_at",
+        "transcribed_at",
+        "transcript_text",
+        "transcription_failure_reason",
+    ):
+        if name not in item:
+            continue
+        value = item[name]
+        session[name] = int(value["N"]) if "N" in value else value["S"]
     return response(200, session)
 
 
