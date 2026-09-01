@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pledge — Recording receipt</title>
+  <style>
+    :root { color-scheme:dark; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; background:#080a09; color:#f2f5f3 }
+    * { box-sizing:border-box } body { margin:0; min-height:100svh; display:grid; place-items:center; padding:1.25rem; background:#080a09 }
+    main { width:min(48rem,100%); border:1px solid #59625c; background:#111511; box-shadow:0 24px 80px rgba(0,0,0,.45) }
+    header, section { padding:clamp(1.25rem,4vw,2.5rem) } header { border-bottom:1px solid #59625c; background:#191e1a }
+    h1 { margin:0; font:400 clamp(3rem,10vw,6rem)/.9 Georgia,serif; letter-spacing:-.05em } h2 { margin:0 0 1rem } p { color:#b9c0bb; line-height:1.55 }
+    .status { color:#d7ff2f; font-weight:800 } dl { display:grid; grid-template-columns:minmax(9rem,auto) 1fr; gap:.75rem 1rem; margin:0 } dt { color:#b9c0bb } dd { margin:0; overflow-wrap:anywhere } .transcript { white-space:pre-wrap; line-height:1.6; border-top:1px solid #59625c }
+    a { color:#d7ff2f }
+  </style>
+</head>
+<body>
+  <main>
+    <header><h1>Received.</h1><p>This is a private receipt for this browser session.</p></header>
+    <section id="receipt"><p class="status">Opening your recording receipt.</p></section>
+  </main>
+  <script>
+    const API = "https://api.pledge.ourlovelysystem.org";
+    const receipt = document.querySelector("#receipt");
+    const stored = sessionStorage.getItem("pledge-door-session");
+    const formatTime = (seconds) => new Date(seconds * 1000).toLocaleString();
+    const escapeHtml = (value) => String(value).replace(/[&<>"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[character]);
+    const show = (title, detail = "") => receipt.innerHTML = `<p class="status">${title}</p>${detail}`;
+    async function load() {
+      if (!stored) { show("No private receipt is available in this browser.", "<p>Complete a recording from <a href=\"./door.html\">Step Up</a> to create one.</p>"); return; }
+      const session = JSON.parse(stored);
+      const response = await fetch(`${API}/door-sessions/${session.session_id}`, { headers:{ "x-pledge-session-token":session.browser_session_token } });
+      const item = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(item.error || "The receipt could not be opened.");
+      const rows = [
+        ["Receipt", item.session_id], ["Challenge", item.challenge_id], ["Status", item.status],
+        ["Recorded format", item.audio_content_type || "not recorded"], ["Recording limit", `${item.recording_seconds} seconds`],
+        ["Created", formatTime(item.created_at)], ["Submitted", item.submitted_at ? formatTime(item.submitted_at) : "not submitted"],
+        ["Transcribed", item.transcribed_at ? formatTime(item.transcribed_at) : "not complete"], ["Valid until", formatTime(item.valid_until)],
+      ];
+      const metadata = rows.map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`).join("");
+      const transcript = item.transcript_text ? `<section class="transcript"><h2>What Pledge heard</h2><p>${escapeHtml(item.transcript_text)}</p></section>` : item.transcription_failure_reason ? `<section class="transcript"><h2>Transcription failed</h2><p>${escapeHtml(item.transcription_failure_reason)}</p></section>` : `<section class="transcript"><p>Transcription is still being processed. Reload this page when you return.</p></section>`;
+      receipt.innerHTML = `<p class="status">Recording ${item.status}.</p><dl>${metadata}</dl>${transcript}`;
+    }
+    load().catch((error) => show(error.message));
+  </script>
+</body>
+</html>
